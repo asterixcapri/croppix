@@ -1,0 +1,17 @@
+{
+  "name": "croppix",
+  "version": "1.0.0",
+  "license": "GPL",
+  "type": "module",
+  "dependencies": {
+    "node-filesystem-cache": "^1.0.2",
+    "sharp": "^0.32.5",
+    "smartcrop": "^2.0.5",
+    "smartcrop-sharp": "^2.0.8"
+  },
+  "scripts": {
+    "dev": "node --watch src/app.js",
+    "start": "node src/app.js"
+  },
+  "packageManager": "yarn@4.5.1"
+}

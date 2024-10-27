@@ -1,0 +1,15 @@
+services:
+  node:
+    build: infra/node/dev
+    ports:
+      - "3003:3003"
+    volumes:
+      - .:/app/croppix
+    environment:
+      - NODE_OPTIONS="--max-old-space-size=8192"
+      - AWS_ACCESS_KEY_ID=your_access_key
+      - AWS_SECRET_ACCESS_KEY=your_secret_key
+      - AWS_REGION=us-east-1
+      - S3_BUCKET_NAME=croppix-bucket
+    entrypoint: tail -f /dev/null
+    restart: always
