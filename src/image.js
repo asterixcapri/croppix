@@ -16,6 +16,7 @@ export const processImageWithCache = async (imageUrl, options) => {
 
   const processedImage = await processImage(imageUrl, options);
   cache.put(imageUrl, processedImage);
+
   return processedImage;
 };
 
@@ -38,6 +39,7 @@ export const processImage = async (imageUrl, options) => {
 const parseUrl = (imageUrl) => {
   const parsedUrl = url.parse(imageUrl);
   parsedUrl.pathname = decodeURI(parsedUrl.pathname);
+
   return parsedUrl;
 };
 
@@ -89,10 +91,12 @@ const parseImageOptions = async (parsedUrl, imageData, options) => {
   };
 
   const formats = ['jpeg', 'png', 'webp'];
+
   const crops = [
     'smart', 'entropy', 'attention', 'center', 'top', 'rightTop', 'right',
     'rightBottom', 'bottom', 'leftBottom', 'left', 'leftTop', 'none',
   ];
+
   const qualities = ['optimized', 'balanced', 'high'];
 
   const image = sharp(imageData);
@@ -114,6 +118,7 @@ const parseImageOptions = async (parsedUrl, imageData, options) => {
         result.crop = value;
       } else if (name === 'cropSmartBoost') {
         const boost = value.split(',');
+
         result.cropSmartBoost = [{
           x: boost[0] ?? 0,
           y: boost[1] ?? 0,
@@ -125,6 +130,7 @@ const parseImageOptions = async (parsedUrl, imageData, options) => {
         result.quality = value;
       } else if (name === 'density') {
         const densityValue = parseFloat(value);
+
         if (densityValue >= 1.0 && densityValue <= 3.0) {
           result.density = densityValue;
         }
@@ -172,6 +178,7 @@ const parseOriginal = async (imageData, imageOptions) => {
 const parseCropSmart = async (imageData, imageOptions) => {
   const size = { width: imageOptions.width, height: imageOptions.height };
   const cropResult = await smartcrop.crop(imageData, size);
+
   const image = sharp(imageData)
     .extract({
       width: cropResult.topCrop.width,
@@ -205,6 +212,7 @@ const parseCropNone = async (imageData, imageOptions) => {
 
 const parseCropOther = async (imageData, imageOptions) => {
   const image = sharp(imageData);
+
   image.resize({
     width: imageOptions.width,
     height: imageOptions.height,
@@ -227,11 +235,13 @@ const getPosition = (pos) => {
 const finalize = async (image, imageOptions) => {
   optimize(image, imageOptions);
   const imageData = await image.toBuffer();
+
   return { imageData, imageOptions };
 };
 
 const optimize = (image, imageOptions) => {
   optimizeSharpen(image);
+
   if (imageOptions.format === 'png') {
     optimizePng(image);
   } else if (imageOptions.format === 'webp') {
