@@ -1,4 +1,3 @@
-import url from 'url';
 import fs from 'fs';
 import http from 'http';
 import https from 'https';
@@ -21,9 +20,9 @@ export const processImageWithCache = async (imageUrl, options) => {
 };
 
 export const processImage = async (imageUrl, options) => {
-  const parsedUrl = parseUrl(imageUrl);
-  const imageData = await loadImage(parsedUrl, options);
-  const imageOptions = await parseImageOptions(parsedUrl, imageData, options);
+  const url = new URL(imageUrl, `http://${options.hostname}`);
+  const imageData = await loadImage(url.pathname, options);
+  const imageOptions = await parseImageOptions(url.searchParams, imageData);
 
   if (imageOptions.original) {
     return await parseOriginal(imageData, imageOptions);
@@ -36,18 +35,11 @@ export const processImage = async (imageUrl, options) => {
   }
 };
 
-const parseUrl = (imageUrl) => {
-  const parsedUrl = url.parse(imageUrl);
-  parsedUrl.pathname = decodeURI(parsedUrl.pathname);
-
-  return parsedUrl;
-};
-
-const loadImage = async (parsedUrl, options) => {
-  const isRemote = parsedUrl.pathname.startsWith('/http:') || parsedUrl.pathname.startsWith('/https:');
+const loadImage = async (path, options) => {
+  const isRemote = path.startsWith('/http:') || path.startsWith('/https:');
 
   if (isRemote) {
-    const remoteImageUrl = parsedUrl.pathname.substr(1);
+    const remoteImageUrl = path.substr(1);
     const protocol = remoteImageUrl.startsWith('https') ? https : http;
 
     return new Promise((resolve, reject) => {
@@ -70,14 +62,12 @@ const loadImage = async (parsedUrl, options) => {
       });
     });
   } else {
-    const imagePath = `${options.baseDir}${parsedUrl.pathname}`;
-    return fs.promises.readFile(imagePath);
+    return fs.promises.readFile(options.baseDir + path);
   }
 };
 
-const parseImageOptions = async (parsedUrl, imageData, options) => {
+const parseImageOptions = async (searchParams, imageData) => {
   const result = {
-    path: parsedUrl.pathname,
     width: 0,
     height: 0,
     shortSide: 0,
@@ -103,10 +93,8 @@ const parseImageOptions = async (parsedUrl, imageData, options) => {
   const metadata = await image.metadata();
   result.format = metadata.format;
 
-  if (parsedUrl.query) {
-    parsedUrl.query.split('&').forEach((arg) => {
-      const [name, value] = arg.split('=');
-
+  if (searchParams) {
+    for (const [name, value] of searchParams) {
       if (['width', 'height', 'shortSide', 'longSide'].includes(name)) {
         const intValue = parseInt(value);
         if (intValue > 0 && intValue < 5000) {
@@ -135,7 +123,7 @@ const parseImageOptions = async (parsedUrl, imageData, options) => {
           result.density = densityValue;
         }
       }
-    });
+    }
   } else {
     result.original = true;
   }
