@@ -1,6 +1,6 @@
 import http from 'http';
 import process from 'process';
-import { processImageWithCache } from './image.js';
+import { processImageWithCache } from './process.js';
 
 const options = {
   hostname: process.env.HOSTNAME || '0.0.0.0',
