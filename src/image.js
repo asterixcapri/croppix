@@ -20,55 +20,62 @@ export const processImageWithCache = async (imageUrl, options) => {
 };
 
 export const processImage = async (imageUrl, options) => {
-  const parsedUrl = await parseUrl(imageUrl, options);
-  const imageOptions = await parseImageOptions(parsedUrl, options);
+  const parsedUrl = parseUrl(imageUrl);
+  const imageData = await loadImage(parsedUrl, options);
+  const imageOptions = await parseImageOptions(parsedUrl, imageData, options);
 
   if (imageOptions.original) {
-    return await parseOriginal(imageOptions, options);
+    return await parseOriginal(imageData, imageOptions);
   } else if (imageOptions.crop === 'smart') {
-    return await parseCropSmart(imageOptions, options);
+    return await parseCropSmart(imageData, imageOptions);
   } else if (imageOptions.crop === 'none') {
-    return await parseCropNone(imageOptions, options);
+    return await parseCropNone(imageData, imageOptions);
   } else {
-    return await parseCropOther(imageOptions, options);
+    return await parseCropOther(imageData, imageOptions);
   }
 };
 
-const parseUrl = async (imageUrl, options) => {
+const parseUrl = (imageUrl) => {
   const parsedUrl = url.parse(imageUrl);
   parsedUrl.pathname = decodeURI(parsedUrl.pathname);
-
-  const isHttp = parsedUrl.pathname.startsWith('/http:');
-  const isHttps = parsedUrl.pathname.startsWith('/https:');
-  const isRemote = isHttp || isHttps;
-
-  if (isRemote) {
-    const remoteImageUrl = parsedUrl.pathname.substr(1);
-    const remoteImagePath = `/remote/${encodeURIComponent(remoteImageUrl)}`;
-
-    parsedUrl.pathname = remoteImagePath;
-
-    if (!fs.existsSync(`${options.baseDir}/remote`)) {
-      fs.mkdirSync(`${options.baseDir}/remote`);
-    }
-
-    const file = fs.createWriteStream(`${options.baseDir}/${remoteImagePath}`);
-    const protocol = isHttp ? http : https;
-
-    await new Promise((resolve, reject) => {
-      protocol.get(remoteImageUrl, response => {
-        response.pipe(file);
-        response.on('end', resolve);
-      }).on('error', reject);
-    });
-  }
-
   return parsedUrl;
 };
 
-const parseImageOptions = async (parsedUrl, options) => {
+const loadImage = async (parsedUrl, options) => {
+  const isRemote = parsedUrl.pathname.startsWith('/http:') || parsedUrl.pathname.startsWith('/https:');
+
+  if (isRemote) {
+    const remoteImageUrl = parsedUrl.pathname.substr(1);
+    const protocol = remoteImageUrl.startsWith('https') ? https : http;
+
+    return new Promise((resolve, reject) => {
+      protocol.get(remoteImageUrl, (response) => {
+        const data = [];
+
+        response.on('data', (chunk) => {
+          data.push(chunk);
+        });
+
+        response.on('end', () => {
+          resolve(Buffer.concat(data));
+        });
+
+        response.on('error', (err) => {
+          reject(err);
+        });
+      }).on('error', (err) => {
+        reject(err);
+      });
+    });
+  } else {
+    const imagePath = `${options.baseDir}${parsedUrl.pathname}`;
+    return fs.promises.readFile(imagePath);
+  }
+};
+
+const parseImageOptions = async (parsedUrl, imageData, options) => {
   const result = {
-    path: '',
+    path: parsedUrl.pathname,
     width: 0,
     height: 0,
     shortSide: 0,
@@ -84,16 +91,16 @@ const parseImageOptions = async (parsedUrl, options) => {
   const formats = ['jpeg', 'png', 'webp'];
   const crops = [
     'smart', 'entropy', 'attention', 'center', 'top', 'rightTop', 'right',
-    'rightBottom', 'bottom', 'leftBottom', 'left', 'leftTop', 'none'
+    'rightBottom', 'bottom', 'leftBottom', 'left', 'leftTop', 'none',
   ];
   const qualities = ['optimized', 'balanced', 'high'];
 
-  result.path = parsedUrl.pathname;
-  const metadata = await sharp(`${options.baseDir}${result.path}`).metadata();
+  const image = sharp(imageData);
+  const metadata = await image.metadata();
   result.format = metadata.format;
 
   if (parsedUrl.query) {
-    parsedUrl.query.split('&').forEach(arg => {
+    parsedUrl.query.split('&').forEach((arg) => {
       const [name, value] = arg.split('=');
 
       if (['width', 'height', 'shortSide', 'longSide'].includes(name)) {
@@ -145,9 +152,9 @@ const parseImageOptions = async (parsedUrl, options) => {
     result.width = metadata.width;
     result.height = metadata.height;
   } else if (result.width > 0 && result.height === 0) {
-    result.height = parseInt(result.width * metadata.height / metadata.width);
+    result.height = parseInt((result.width * metadata.height) / metadata.width);
   } else if (result.width === 0 && result.height > 0) {
-    result.width = parseInt(result.height * metadata.width / metadata.height);
+    result.width = parseInt((result.height * metadata.width) / metadata.height);
   }
 
   result.width = result.width ? parseInt(result.width * result.density) : result.width;
@@ -158,28 +165,27 @@ const parseImageOptions = async (parsedUrl, options) => {
   return result;
 };
 
-const parseOriginal = async (imageOptions, options) => {
-  const imageData = await fs.promises.readFile(`${options.baseDir}${imageOptions.path}`);
+const parseOriginal = async (imageData, imageOptions) => {
   return { imageData, imageOptions };
 };
 
-const parseCropSmart = async (imageOptions, options) => {
+const parseCropSmart = async (imageData, imageOptions) => {
   const size = { width: imageOptions.width, height: imageOptions.height };
-  const result = await smartcrop.crop(`${options.baseDir}${imageOptions.path}`, size);
-  const image = sharp(`${options.baseDir}${imageOptions.path}`)
+  const cropResult = await smartcrop.crop(imageData, size);
+  const image = sharp(imageData)
     .extract({
-      width: result.topCrop.width,
-      height: result.topCrop.height,
-      left: result.topCrop.x,
-      top: result.topCrop.y
+      width: cropResult.topCrop.width,
+      height: cropResult.topCrop.height,
+      left: cropResult.topCrop.x,
+      top: cropResult.topCrop.y
     })
     .resize(size);
 
   return await finalize(image, imageOptions);
 };
 
-const parseCropNone = async (imageOptions, options) => {
-  const image = sharp(`${options.baseDir}${imageOptions.path}`);
+const parseCropNone = async (imageData, imageOptions) => {
+  const image = sharp(imageData);
   const { channels: [rc, gc, bc] } = await image.stats();
 
   image.resize({
@@ -197,8 +203,8 @@ const parseCropNone = async (imageOptions, options) => {
   return await finalize(image, imageOptions);
 };
 
-const parseCropOther = async (imageOptions, options) => {
-  const image = sharp(`${options.baseDir}${imageOptions.path}`);
+const parseCropOther = async (imageData, imageOptions) => {
+  const image = sharp(imageData);
   image.resize({
     width: imageOptions.width,
     height: imageOptions.height,
@@ -208,7 +214,7 @@ const parseCropOther = async (imageOptions, options) => {
   return await finalize(image, imageOptions);
 };
 
-const getPosition = pos => {
+const getPosition = (pos) => {
   if (pos === 'entropy') {
     return sharp.strategy.entropy;
   } else if (pos === 'attention') {
@@ -241,7 +247,7 @@ const optimizeSharpen = (image) => {
 
 const optimizeJpeg = (image, imageOptions) => {
   let quality;
-  
+
   if (imageOptions.quality === 'optimized') {
     quality = 70;
   } else if (imageOptions.quality === 'balanced') {
