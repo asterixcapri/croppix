@@ -1,6 +1,7 @@
 import http from 'http';
 import process from 'process';
-import { processImageWithCache } from './process.js';
+import { loadImage } from './load.js';
+import { processImage } from './process.js';
 
 const options = {
   hostname: process.env.HOSTNAME || '0.0.0.0',
@@ -17,7 +18,9 @@ const options = {
 
 const server = http.createServer(async (req, res) => {
   try {
-    const result = await processImageWithCache(req.url, options);
+    const url = new URL(req.url, `http://${options.hostname}`);
+    const imageData = await loadImage(url.pathname, options);
+    const result = await processImage(imageData, url.searchParams);
     res.statusCode = 200;
     res.setHeader('Content-Type', 'image/' + result.imageOptions.format);
     res.end(Buffer.from(result.imageData));
