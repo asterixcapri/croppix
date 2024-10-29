@@ -1,6 +1,6 @@
 import FilesystemCache from 'node-filesystem-cache';
 
-export const cachedResult = async (imageUrl, options, callback) => {
+export const getCachedResult = async (imageUrl, options, callback) => {
   const cache = new FilesystemCache(options.cacheDir);
   let result = cache.get(imageUrl);
 
