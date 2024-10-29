@@ -38,7 +38,7 @@ const remoteGet = (url) => {
 
       if (statusCode !== 200) {
         response.resume();
-        reject(`Request Failed. Status Code: ${statusCode}. ${pathname}`);
+        reject(`Request Failed. Status Code: ${statusCode}. ${url}`);
         return;
       }
 
