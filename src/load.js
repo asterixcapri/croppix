@@ -2,8 +2,16 @@ import fs from 'fs';
 import http from 'http';
 import https from 'https';
 import path from 'path';
+import { UnsupportedFileExtensionError, UnauthorizedFileAccessError } from './errors.js';
 
 export const loadImage = async (pathname, options) => {
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+  const fileExtension = path.extname(pathname).toLowerCase();
+
+  if (!allowedExtensions.includes(fileExtension)) {
+    throw new UnsupportedFileExtensionError(`File type not allowed: ${pathname}`);
+  }
+
   const isRemote = pathname.startsWith('/http:') || pathname.startsWith('/https:');
 
   if (isRemote) {
@@ -14,7 +22,7 @@ export const loadImage = async (pathname, options) => {
     const safePathname = path.normalize(path.join(options.baseDir, pathname));
 
     if (!safePathname.startsWith(path.normalize(options.baseDir))) {
-      throw new Error('Unauthorized access to filesystem!');
+      throw new UnauthorizedFileAccessError(`Unauthorized file access: ${pathname}`);
     }
 
     return fs.promises.readFile(safePathname);
@@ -30,7 +38,7 @@ const remoteGet = (url) => {
 
       if (statusCode !== 200) {
         response.resume();
-        reject(`${url} Request Failed. Status Code: ${statusCode}`);
+        reject(`Request Failed. Status Code: ${statusCode}. ${pathname}`);
         return;
       }
 

@@ -193,14 +193,12 @@ const optimizeSharpen = (image) => {
 };
 
 const optimizeJpeg = (image, imageOptions) => {
-  let quality;
+  let quality = 88;
 
   if (imageOptions.quality === 'optimized') {
     quality = 70;
   } else if (imageOptions.quality === 'balanced') {
     quality = 80;
-  } else {
-    quality = 88;
   }
 
   image.jpeg({ quality, mozjpeg: imageOptions.quality === 'optimized' });
