@@ -1,66 +1,52 @@
 import fs from 'fs';
 import http from 'http';
 import https from 'https';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import path from 'path';
 
-export const loadImage = async (path, options) => {
-  const isRemote = path.startsWith('/http:') || path.startsWith('/https:');
+export const loadImage = async (pathname, options) => {
+  const isRemote = pathname.startsWith('/http:') || pathname.startsWith('/https:');
 
   if (isRemote) {
-    const remoteImageUrl = path.substring(1);
-    const protocol = remoteImageUrl.startsWith('https') ? https : http;
+    return remoteGet(pathname.substring(1));
+  } else if (options.baseExternalUrl) {
+    return remoteGet(path.join(options.baseExternalUrl, pathname));
+  } else {
+    const safePathname = path.normalize(path.join(options.baseDir, pathname));
 
-    return new Promise((resolve, reject) => {
-      protocol.get(remoteImageUrl, (response) => {
-        const data = [];
+    if (!safePathname.startsWith(path.normalize(options.baseDir))) {
+      throw new Error('Unauthorized access to filesystem!');
+    }
 
-        response.on('data', (chunk) => {
-          data.push(chunk);
-        });
+    return fs.promises.readFile(safePathname);
+  }
+};
 
-        response.on('end', () => {
-          resolve(Buffer.concat(data));
-        });
+const remoteGet = (url) => {
+  const protocol = url.startsWith('https') ? https : http;
 
-        response.on('error', (err) => {
-          reject(err);
-        });
-      }).on('error', (err) => {
-        reject(err);
+  return new Promise((resolve, reject) => {
+    const req = protocol.get(url, (response) => {
+      const { statusCode } = response;
+
+      if (statusCode !== 200) {
+        response.resume();
+        reject(`${url} Request Failed. Status Code: ${statusCode}`);
+        return;
+      }
+
+      const data = [];
+
+      response.on('data', (chunk) => {
+        data.push(chunk);
+      });
+
+      response.on('end', () => {
+        resolve(Buffer.concat(data));
       });
     });
-  } else if (options.s3 && options.s3.accessKeyId && options.s3.secretAccessKey && options.s3.bucketName) {
-    const s3Client = new S3Client({
-      region: options.s3.region,
-      credentials: {
-        accessKeyId: options.s3.accessKeyId,
-        secretAccessKey: options.s3.secretAccessKey,
-      },
+
+    req.on('error', (err) => {
+      reject(err);
     });
-
-    const params = {
-      Bucket: options.s3.bucketName,
-      Key: path.startsWith('/') ? path.substring(1) : path
-    };
-
-    try {
-      const command = new GetObjectCommand(params);
-      const data = await s3Client.send(command);
-
-      const streamToBuffer = async (stream) => {
-        return new Promise((resolve, reject) => {
-          const chunks = [];
-          stream.on('data', (chunk) => chunks.push(chunk));
-          stream.on('end', () => resolve(Buffer.concat(chunks)));
-          stream.on('error', (err) => reject(err));
-        });
-      };
-
-      return await streamToBuffer(data.Body);
-    } catch (err) {
-      throw err;
-    }
-  } else {
-    return fs.promises.readFile(options.baseDir + path);
-  }
+  });
 };
