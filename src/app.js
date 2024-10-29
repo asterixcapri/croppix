@@ -1,5 +1,6 @@
 import http from 'http';
 import process from 'process';
+import { cachedResult } from './cache.js';
 import { loadImage } from './load.js';
 import { processImage } from './process.js';
 
@@ -19,8 +20,12 @@ const options = {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${options.hostname}`);
-    const imageData = await loadImage(url.pathname, options);
-    const result = await processImage(imageData, url.searchParams);
+
+    const result = await cachedResult(req.url, options, async () => {
+      const imageData = await loadImage(url.pathname, options);
+      return await processImage(imageData, url.searchParams);
+    });
+
     res.statusCode = 200;
     res.setHeader('Content-Type', 'image/' + result.imageOptions.format);
     res.end(Buffer.from(result.imageData));
