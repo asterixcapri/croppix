@@ -30,6 +30,7 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Content-Type', 'image/' + result.imageOptions.format);
     res.end(Buffer.from(result.imageData));
   } catch (err) {
+    console.error(req);
     console.error(err);
 
     if (err instanceof UnsupportedFileExtensionError) {
