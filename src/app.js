@@ -1,6 +1,5 @@
 import http from 'http';
 import process from 'process';
-import { getCachedResult } from './cache.js';
 import { loadImage } from './load.js';
 import { processImage } from './process.js';
 import { UnsupportedFileExtensionError, UnauthorizedFileAccessError } from './errors.js';
@@ -9,18 +8,14 @@ const options = {
   hostname: process.env.HOSTNAME || '0.0.0.0',
   port: process.env.PORT || 3003,
   baseDir: process.env.BASE_DIR || './images',
-  baseExternalUrl: process.env.BASE_EXTERNAL_URL || '',
-  cacheDir: process.env.CACHE_DIR || './cache'
+  baseExternalUrl: process.env.BASE_EXTERNAL_URL || ''
 };
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${options.hostname}`);
-
-    const result = await getCachedResult(req.url, options, async () => {
-      const imageData = await loadImage(url.pathname, options);
-      return await processImage(imageData, url.searchParams);
-    });
+    const imageData = await loadImage(url.pathname, options);
+    const result = await processImage(imageData, url.searchParams);
 
     if (!result) {
       throw new Error('No result');

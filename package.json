@@ -4,7 +4,6 @@
   "license": "GPL",
   "type": "module",
   "dependencies": {
-    "node-filesystem-cache": "^1.0.2",
     "sharp": "^0.32.5",
     "smartcrop": "^2.0.5",
     "smartcrop-sharp": "^2.0.8"
