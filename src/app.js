@@ -1,8 +1,8 @@
 import http from 'http';
 import process from 'process';
 import { loadImage } from './load.js';
+import { parsePath } from './path.js';
 import { processImage } from './process.js';
-import { UnsupportedFileExtensionError, UnauthorizedFileAccessError } from './errors.js';
 
 const options = {
   hostname: process.env.HOSTNAME || '0.0.0.0',
@@ -13,29 +13,24 @@ const options = {
 
 const server = http.createServer(async (req, res) => {
   try {
-    const url = new URL(req.url, `http://${options.hostname}`);
-    const imageData = await loadImage(url.pathname, options);
-    const result = await processImage(imageData, url.searchParams);
+    const { originalPath, params } = parsePath(req.url);
+    const imageData = await loadImage(originalPath, options);
+    const processedImage = await processImage(imageData, params);
 
-    if (!result) {
+    if (!processedImage) {
       throw new Error('No result');
     }
 
     res.statusCode = 200;
-    res.setHeader('Content-Type', 'image/' + result.imageOptions.format);
-    res.end(Buffer.from(result.imageData));
+    res.setHeader('Content-Type', 'image/' + params.format);
+    res.end(Buffer.from(processedImage));
   } catch (err) {
-    console.error(req);
     console.error(err);
 
-    if (err instanceof UnsupportedFileExtensionError) {
+    if (err instanceof Error) {
       res.statusCode = 400;
       res.setHeader('Content-Type', 'text/plain');
-      res.end('Unsupported file extension');
-    } else if (err instanceof UnauthorizedFileAccessError) {
-      res.statusCode = 403;
-      res.setHeader('Content-Type', 'text/plain');
-      res.end('Access denied');
+      res.end(err.name + ': ' + err.message);
     } else {
       res.statusCode = 404;
       res.setHeader('Content-Type', 'text/plain');

@@ -2,34 +2,30 @@ import fs from 'fs';
 import http from 'http';
 import https from 'https';
 import path from 'path';
-import { UnsupportedFileExtensionError, UnauthorizedFileAccessError } from './errors.js';
+import { UnauthorizedFileAccessError } from './errors.js';
 
-export const loadImage = async (pathname, options) => {
-  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
-  const fileExtension = path.extname(pathname).toLowerCase();
-
-  if (!allowedExtensions.includes(fileExtension)) {
-    throw new UnsupportedFileExtensionError(`File type not allowed: ${pathname}`);
-  }
-
-  const isRemote = pathname.startsWith('/http:') || pathname.startsWith('/https:');
+export const loadImage = async (originalPath, options) => {
+  const isRemote = originalPath.startsWith('/http:') || originalPath.startsWith('/https:');
+  let imageData;
 
   if (isRemote) {
-    return remoteGet(pathname.substring(1));
+    imageData = await httpGet(originalPath.substring(1));
   } else if (options.baseExternalUrl) {
-    return remoteGet(path.join(options.baseExternalUrl, pathname));
+    imageData = await httpGet(path.join(options.baseExternalUrl, originalPath));
   } else {
-    const safePathname = path.normalize(path.join(options.baseDir, pathname));
+    const safePathname = path.normalize(path.join(options.baseDir, originalPath));
 
     if (!safePathname.startsWith(path.normalize(options.baseDir))) {
-      throw new UnauthorizedFileAccessError(`Unauthorized file access: ${pathname}`);
+      throw new UnauthorizedFileAccessError(`Unauthorized file access: ${originalPath}`);
     }
 
-    return fs.promises.readFile(safePathname);
+    imageData = await fs.promises.readFile(safePathname);
   }
+
+  return imageData;
 };
 
-const remoteGet = (url) => {
+const httpGet = (url) => {
   const protocol = url.startsWith('https') ? https : http;
 
   return new Promise((resolve, reject) => {

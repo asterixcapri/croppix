@@ -1,3 +1,10 @@
+export class InvalidPathError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'InvalidPathError';
+  }
+}
+
 export class UnsupportedFileExtensionError extends Error {
   constructor(message) {
     super(message);
