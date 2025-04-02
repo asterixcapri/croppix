@@ -8,5 +8,5 @@ services:
       - .:/app
     environment:
       - NODE_OPTIONS=--max-old-space-size=8192
-      - BASE_EXTERNAL_URL=https://ondang-media.s3.us-east-1.amazonaws.com
+      - BASE_EXTERNAL_URL=https://ondang-dev-images.s3.us-east-1.amazonaws.com
     entrypoint: tail -f /dev/null
