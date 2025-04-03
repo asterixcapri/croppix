@@ -1,13 +1,14 @@
-FROM node:20.18.0-bookworm-slim AS builder
+FROM node:22.14.0-bookworm-slim AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm install
+COPY package.json yarn.lock ./
+RUN corepack enable
+RUN yarn install
 COPY . .
 
 
-FROM node:20.18.0-bookworm-slim
+FROM node:22.14.0-bookworm-slim
 LABEL maintainer="Alessandro Astarita <aleast@caprionline.it>"
 
 WORKDIR /app
@@ -16,4 +17,4 @@ COPY --from=builder /app ./
 
 STOPSIGNAL SIGTERM
 EXPOSE 3003
-CMD ["node", "/app/src/app.js"]
+CMD ["yarn", "start"]
