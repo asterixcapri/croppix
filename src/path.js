@@ -40,14 +40,14 @@ export const parsePath = (path) => {
   }
 
   const pathParts = path.split('/');
-  const lastPart = pathParts[pathParts.length - 1];
+  const paramsPath = pathParts[pathParts.length - 1];
   const originalPath = pathParts.slice(0, -1).join('/');
 
-  if (!lastPart.includes('_')) {
+  if (!paramsPath.includes('_')) {
     throw new InvalidPathError(`Path is invalid: ${path}`);
   }
 
-  const format = lastPart.split('.').pop().toLowerCase();
+  const format = paramsPath.split('.').pop().toLowerCase();
 
   if (!allowed.formats.includes(format)) {
     throw new UnsupportedFileExtensionError(`Image format not allowed: ${format}`);
@@ -55,7 +55,7 @@ export const parsePath = (path) => {
 
   params.format = format === 'jpg' ? 'jpeg' : format;
 
-  const pathParams = lastPart.split('_');
+  const pathParams = paramsPath.split('_');
 
   for (const pathParam of pathParams) {
     if (pathParam.length < 2) {
@@ -121,6 +121,5 @@ export const parsePath = (path) => {
     }
   }
 
-  return { originalPath, params };
+  return { originalPath, params, paramsPath };
 };
-

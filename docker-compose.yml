@@ -8,5 +8,9 @@ services:
       - .:/app
     environment:
       - NODE_OPTIONS=--max-old-space-size=8192
-      - BASE_EXTERNAL_URL=https://ondang-dev-images.s3.us-east-1.amazonaws.com
+      - AWS_REGION=
+      - AWS_ACCESS_KEY_ID=
+      - AWS_SECRET_ACCESS_KEY=
+      - AWS_BUCKET=
+      - AWS_BUCKET_CACHE=
     entrypoint: tail -f /dev/null
