@@ -9,6 +9,7 @@ const s3Client = new S3Client({
 });
 
 export const awsGet = async (input) => {
+  input.Key = decodeURIComponent(input?.Key);
   const command = new GetObjectCommand(input);
 
   try {
@@ -28,6 +29,7 @@ export const awsGet = async (input) => {
 };
 
 export const awsPut = async (input) => {
+  input.Key = decodeURIComponent(input?.Key);
   const command = new PutObjectCommand(input);
 
   try {
