@@ -12,6 +12,13 @@ export class UnsupportedFileExtensionError extends Error {
   }
 }
 
+export class ImageProcessingError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ImageProcessingError';
+  }
+}
+
 export class UnauthorizedFileAccessError extends Error {
   constructor(message) {
     super(message);

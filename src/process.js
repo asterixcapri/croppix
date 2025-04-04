@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import smartcrop from 'smartcrop-sharp';
+import { ImageProcessingError } from './errors.js';
 
 export const processImage = async (imageData, params) => {
   if (params.original) {
@@ -17,13 +18,21 @@ export const processImage = async (imageData, params) => {
   params.width = dimensions.width;
   params.height = dimensions.height;
 
+  let result;
+
   if (params.crop === 'smart') {
-    return await applyCropSmart(imageData, params);
+    result = await applyCropSmart(imageData, params);
   } else if (params.crop === 'none') {
-    return await applyCropNone(imageData, params);
+    result = await applyCropNone(imageData, params);
   } else {
-    return await applyCropOther(imageData, params);
+    result = await applyCropOther(imageData, params);
   }
+
+  if (!result) {
+    throw new ImageProcessingError('Failed to process image');
+  }
+
+  return result;
 };
 
 const calculateDimensions = (params, metadata) => {
