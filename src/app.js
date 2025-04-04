@@ -6,9 +6,7 @@ import { awsGet, awsPut } from './aws.js';
 
 const options = {
   hostname: process.env.HOSTNAME || '0.0.0.0',
-  port: process.env.PORT || 3003,
-  baseDir: process.env.BASE_DIR || './images',
-  baseExternalUrl: process.env.BASE_EXTERNAL_URL || ''
+  port: process.env.PORT || 3003
 };
 
 const server = http.createServer(async (req, res) => {
