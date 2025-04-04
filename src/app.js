@@ -31,6 +31,8 @@ const server = http.createServer(async (req, res) => {
       ContentType: 'image/' + params.format
     });
 
+    console.log(originalPath.substring(1) + '/' + paramsPath);
+
     res.statusCode = 200;
     res.setHeader('Content-Type', 'image/' + params.format);
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
