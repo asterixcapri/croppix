@@ -1,10 +1,10 @@
 {
   "name": "croppix",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "GPL",
   "type": "module",
   "dependencies": {
-    "node-filesystem-cache": "^1.0.2",
+    "@aws-sdk/client-s3": "^3.779.0",
     "sharp": "^0.32.5",
     "smartcrop": "^2.0.5",
     "smartcrop-sharp": "^2.0.8"
