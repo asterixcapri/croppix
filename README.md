@@ -176,6 +176,7 @@ Everything else is handled by the provided Docker container.
 ```bash
 git clone https://github.com/caprionlinesrl/croppix.git
 cd croppix
+cp .env.dist .env
 docker compose up -d
 ./scripts/shell.sh
 yarn install
