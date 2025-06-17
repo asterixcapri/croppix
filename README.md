@@ -1,8 +1,8 @@
 # Croppix
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/caprionlinesrl/croppix)](https://hub.docker.com/r/caprionlinesrl/croppix)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![GitHub stars](https://img.shields.io/github/stars/caprionlinesrl/croppix?style=social)](https://github.com/caprionlinesrl/croppix)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://www.tldrlegal.com/license/mit-license)
+[![GitHub stars](https://img.shields.io/github/stars/asterixcapri/croppix?style=social)](https://github.com/asterixcapri/croppix)
 
 **Croppix** is an open-source image processing service based on [Sharp](https://sharp.pixelplumbing.com/) and [Smartcrop](https://github.com/jwagner/smartcrop.js), allowing dynamic generation of cropped and optimized images directly from URL parameters, with intelligent caching support on AWS S3.
 
@@ -59,7 +59,7 @@ docker run -p 3003:3003 \
   -e AWS_REGION=us-east-1 \
   -e AWS_BUCKET=your-source-bucket \
   -e AWS_BUCKET_CACHE=your-cache-bucket \
-  caprionlinesrl/croppix:latest
+  asterixcapri/croppix:latest
 ```
 
 Croppix is designed to work behind a **CloudFront distribution** with two origins:
@@ -174,7 +174,7 @@ Everything else is handled by the provided Docker container.
 ### Installation and Start
 
 ```bash
-git clone https://github.com/caprionlinesrl/croppix.git
+git clone https://github.com/asterixcapri/croppix.git
 cd croppix
 cp .env.dist .env
 docker compose up -d
@@ -201,12 +201,12 @@ The Docker container will automatically load these variables if referenced in `d
 
 Found a bug or want to add a feature?
 
-Open an [Issue](https://github.com/caprionlinesrl/croppix/issues) or a [Pull Request](https://github.com/caprionlinesrl/croppix/pulls).
+Open an [Issue](https://github.com/asterixcapri/croppix/issues) or a [Pull Request](https://github.com/asterixcapri/croppix/pulls).
 
 ## ⚖️ License
 
-Distributed under the [GPL-3.0 license](LICENSE).
+Distributed under the [MIT license](LICENSE).
 
 ---
 
-Developed by [Alessandro Astarita](https://github.com/asterixcapri) [Caprionline](https://www.caprionline.it)
+Developed by [Alessandro Astarita](https://github.com/asterixcapri)
