@@ -26,14 +26,12 @@ const server = http.createServer(async (req, res) => {
       throw new Error('No image data');
     }
 
-    if (!params.original) {
-      await awsPut({
-        Bucket: process.env.AWS_BUCKET_CACHE,
-        Key: originalPath.substring(1) + '/' + paramsPath,
-        Body: processedImage,
-        ContentType: 'image/' + params.format
-      });
-    }
+    await awsPut({
+      Bucket: process.env.AWS_BUCKET_CACHE,
+      Key: originalPath.substring(1) + '/' + paramsPath,
+      Body: processedImage,
+      ContentType: 'image/' + params.format
+    });
 
     logRequest(200, req.url);
     res.statusCode = 200;
