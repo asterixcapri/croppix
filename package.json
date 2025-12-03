@@ -3,6 +3,10 @@
   "version": "2.0.0-beta.4",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asterixcapri/croppix"
+  },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.943.0",
     "@aws-sdk/client-s3": "^3.943.0",
