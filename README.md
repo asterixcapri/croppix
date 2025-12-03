@@ -178,7 +178,7 @@ git clone https://github.com/asterixcapri/croppix.git
 cd croppix
 cp .env.dist .env
 docker compose up -d
-./scripts/shell.sh
+docker compose exec node bash
 yarn install
 yarn dev
 ```
