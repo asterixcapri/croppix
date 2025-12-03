@@ -46,10 +46,6 @@ export const parsePath = (path) => {
   if (paramsPath === 'original') {
     params.original = true;
 
-    console.log(originalPath);
-    console.log(params);
-    console.log(paramsPath);
-
     return {
       originalPath,
       params,
@@ -77,52 +73,66 @@ export const parsePath = (path) => {
     const pathParamValue = pathParam.substring(1);
 
     switch (pathParamType) {
-      case 'w': // width
+      case 'w': { // width
         const width = parseInt(pathParamValue, 10);
-        if (width > 0 && width <= allowed.maxDimension) {
-          params.width = width;
+        if (Number.isNaN(width) || width <= 0 || width > allowed.maxDimension) {
+          throw new NotFoundError(`Width out of range: ${pathParamValue}`);
         }
+        params.width = width;
         break;
+      }
 
-      case 'h': // height
+      case 'h': { // height
         const height = parseInt(pathParamValue, 10);
-        if (height > 0 && height <= allowed.maxDimension) {
-          params.height = height;
+        if (Number.isNaN(height) || height <= 0 || height > allowed.maxDimension) {
+          throw new NotFoundError(`Height out of range: ${pathParamValue}`);
         }
+        params.height = height;
         break;
+      }
 
-      case 's': // shortSide
+      case 's': { // shortSide
         const shortSide = parseInt(pathParamValue, 10);
-        if (shortSide > 0 && shortSide <= allowed.maxDimension) {
-          params.shortSide = shortSide;
+        if (Number.isNaN(shortSide) || shortSide <= 0 || shortSide > allowed.maxDimension) {
+          throw new NotFoundError(`shortSide out of range: ${pathParamValue}`);
         }
+        params.shortSide = shortSide;
         break;
+      }
 
-      case 'l': // longSide
+      case 'l': { // longSide
         const longSide = parseInt(pathParamValue, 10);
-        if (longSide > 0 && longSide <= allowed.maxDimension) {
-          params.longSide = longSide;
+        if (Number.isNaN(longSide) || longSide <= 0 || longSide > allowed.maxDimension) {
+          throw new NotFoundError(`longSide out of range: ${pathParamValue}`);
         }
+        params.longSide = longSide;
         break;
+      }
 
-      case 'c': // crop
-        if (allowed.crops.includes(pathParamValue)) {
-          params.crop = pathParamValue;
+      case 'c': { // crop
+        if (!allowed.crops.includes(pathParamValue)) {
+          throw new NotFoundError(`Crop not allowed: ${pathParamValue}`);
         }
+        params.crop = pathParamValue;
         break;
+      }
 
-      case 'q': // quality
-        if (allowed.qualities.includes(pathParamValue)) {
-          params.quality = pathParamValue;
+      case 'q': { // quality
+        if (!allowed.qualities.includes(pathParamValue)) {
+          throw new NotFoundError(`Quality not allowed: ${pathParamValue}`);
         }
+        params.quality = pathParamValue;
         break;
+      }
 
-      case 'd': // density
+      case 'd': { // density
         const density = parseFloat(pathParamValue);
-        if (density >= 1.0 && density <= allowed.maxDensity) {
-          params.density = density;
+        if (Number.isNaN(density) || density < 1.0 || density > allowed.maxDensity) {
+          throw new NotFoundError(`Density out of range: ${pathParamValue}`);
         }
+        params.density = density;
         break;
+      }
     }
   }
 

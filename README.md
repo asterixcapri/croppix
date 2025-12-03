@@ -112,6 +112,13 @@ https://your-croppix-domain.com/photos/image123.jpg/w400_h300_d2_csmart_u1712345
 
 Parameters can be combined with `_` and used in any order.
 
+### Validation & HTTP Status Codes
+
+- If the URL is syntactically invalid, the format is not supported, or a parameter is out of range, Croppix returns **404 Not Found**.
+  - Examples: `w{width}` / `h{height}` / `s{shortSide}` / `l{longSide}` > `maxDimension`, `d{density}` outside `[1.0, maxDensity]`, unsupported `c{crop}` or `q{quality}`.
+- If the source image key does not exist in S3, Croppix returns **404 Not Found**.
+- Any internal processing error (Sharp, Rekognition, or other runtime errors) results in **500 Internal Server Error**.
+
 > **Tip:** To get the original image without any transformations, use `/original`:
 > - `https://your-croppix-domain.com/photos/image123.jpg/original` (same format as source)
 
