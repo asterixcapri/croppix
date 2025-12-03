@@ -168,7 +168,7 @@ const formatParams = (params = {}) => {
   if (params?.density) parts.push(`d${params.density}`);
   if (params?.updatedAt) parts.push(`u${params.updatedAt}`);
 
-  if (parts.length === 0) return '';
+  if (parts.length === 0) return '/original';
   return '/' + parts.join('_') + '.' + (params?.format || 'jpeg');
 };
 ```
