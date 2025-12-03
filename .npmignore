@@ -1,1 +1,6 @@
-.env
+/cache/*
+/node_modules
+/.pnp.*
+/.yarn
+/npm-debug.log
+/.env
