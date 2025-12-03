@@ -1,6 +1,6 @@
 # Croppix
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/caprionlinesrl/croppix)](https://hub.docker.com/r/caprionlinesrl/croppix)
+[![Docker Pulls](https://img.shields.io/docker/pulls/asterixcapri/croppix)](https://hub.docker.com/r/asterixcapri/croppix)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://www.tldrlegal.com/license/mit-license)
 [![GitHub stars](https://img.shields.io/github/stars/asterixcapri/croppix?style=social)](https://github.com/asterixcapri/croppix)
 
@@ -50,7 +50,7 @@ Docker is recommended for deployment, along with CDN integration such as CloudFr
 
 Croppix is also available as a Docker container:
 
-👉 [https://hub.docker.com/r/caprionlinesrl/croppix](https://hub.docker.com/r/caprionlinesrl/croppix)
+👉 [https://hub.docker.com/r/asterixcapri/croppix](https://hub.docker.com/r/asterixcapri/croppix)
 
 You can run the container with:
 
