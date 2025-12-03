@@ -3,4 +3,5 @@
 /.pnp.*
 /.yarn
 /npm-debug.log
+/.env
 !.gitignore
