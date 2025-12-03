@@ -7,3 +7,5 @@ services:
     volumes:
       - .:/app
     env_file: .env
+    user: node
+    working_dir: /app
