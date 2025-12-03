@@ -13,12 +13,12 @@ const server = http.createServer(async (req, res) => {
   try {
     const { originalPath, params, paramsPath } = parsePath(req.url);
 
-    const imageData = await awsGet({
+    const imageBuffer = await awsGet({
       Bucket: process.env.AWS_BUCKET,
       Key: originalPath.substring(1)
     });
 
-    const processedImage = await processImage(imageData, params);
+    const processedImage = await processImage(imageBuffer, params);
 
     if (!processedImage) {
       throw new Error('No image data');

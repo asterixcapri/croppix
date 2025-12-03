@@ -47,7 +47,8 @@ export const parsePath = (path) => {
     throw new InvalidPathError(`Path is invalid: ${path}`);
   }
 
-  const format = paramsPath.split('.').pop().toLowerCase();
+  const paramsParts = paramsPath.split('.');
+  const format = paramsParts.pop().toLowerCase();
 
   if (!allowed.formats.includes(format)) {
     throw new UnsupportedFileExtensionError(`Image format not allowed: ${format}`);
@@ -55,7 +56,7 @@ export const parsePath = (path) => {
 
   params.format = format === 'jpg' ? 'jpeg' : format;
 
-  const pathParams = paramsPath.split('_');
+  const pathParams = paramsParts.join('.').split('_');
 
   for (const pathParam of pathParams) {
     if (pathParam.length < 2) {
