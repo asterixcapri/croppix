@@ -22,13 +22,10 @@ export const processImage = async (imageBuffer, params) => {
   let result;
 
   if (params.crop === 'smart') {
-    console.log('crop: smart');
     result = await applyCropSmart(imageBuffer, params, metadata);
   } else if (params.crop === 'none') {
-    console.log('crop: none');
     result = await applyCropNone(imageBuffer, params, metadata);
   } else {
-    console.log('crop: other');
     result = await applyCropOther(imageBuffer, params, metadata);
   }
 

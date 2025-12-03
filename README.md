@@ -107,11 +107,13 @@ https://your-croppix-domain.com/photos/image123.jpg/w400_h300_d2_csmart_u1712345
 | `c{crop}`        | Crop type (see below) |
 | `q{quality}`     | Output quality (e.g., `q80`) |
 | `d{density}`     | Retina scale factor, e.g., `d2` |
-| `o1`             | Force original image without transformations |
 | `u{updatedAt}`   | Cache busting timestamp (e.g., `u1684485984`) |
 | `.webp`, `.jpeg`, `.png` | Output format |
 
 Parameters can be combined with `_` and used in any order.
+
+> **Tip:** To get the original image without any transformations, use `/original`:
+> - `https://your-croppix-domain.com/photos/image123.jpg/original` (same format as source)
 
 ## ✂️ Supported Crop Types (`c{crop}`)
 
@@ -143,25 +145,24 @@ To dynamically generate Croppix URLs in a frontend app:
 ```js
 const croppixBaseUrl = 'https://your-croppix-domain.com';
 
-export const croppixUrl = (path, params) => {
+export const croppixUrl = (path, params = {}) => {
   if (!path) return '';
-  return croppixBaseUrl + encodeURI(path) + '/' + formatParams(params);
+  return croppixBaseUrl + encodeURI(path) + formatParams(params);
 };
 
 const formatParams = (params = {}) => {
   const parts = [];
-  if (params.width) parts.push(`w${params.width}`);
-  if (params.height) parts.push(`h${params.height}`);
-  if (params.shortSide) parts.push(`s${params.shortSide}`);
-  if (params.longSide) parts.push(`l${params.longSide}`);
-  if (params.crop) parts.push(`c${params.crop}`);
-  if (params.quality) parts.push(`q${params.quality}`);
-  if (params.density) parts.push(`d${params.density}`);
-  if (params.original) parts.push('o1');
-  if (params.updatedAt) parts.push(`u${params.updatedAt}`);
+  if (params?.width) parts.push(`w${params.width}`);
+  if (params?.height) parts.push(`h${params.height}`);
+  if (params?.shortSide) parts.push(`s${params.shortSide}`);
+  if (params?.longSide) parts.push(`l${params.longSide}`);
+  if (params?.crop) parts.push(`c${params.crop}`);
+  if (params?.quality) parts.push(`q${params.quality}`);
+  if (params?.density) parts.push(`d${params.density}`);
+  if (params?.updatedAt) parts.push(`u${params.updatedAt}`);
 
-  const extension = params.format || 'jpeg';
-  return parts.join('_') + '.' + extension;
+  if (parts.length === 0) return '';
+  return '/' + parts.join('_') + '.' + (params?.format || 'jpeg');
 };
 ```
 

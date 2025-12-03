@@ -24,14 +24,16 @@ const server = http.createServer(async (req, res) => {
       throw new Error('No image data');
     }
 
-    await awsPut({
-      Bucket: process.env.AWS_BUCKET_CACHE,
-      Key: originalPath.substring(1) + '/' + paramsPath,
-      Body: processedImage,
-      ContentType: 'image/' + params.format
-    });
-
-    console.log(originalPath.substring(1) + '/' + paramsPath);
+    // Only cache processed images, not originals
+    if (paramsPath) {
+      await awsPut({
+        Bucket: process.env.AWS_BUCKET_CACHE,
+        Key: originalPath.substring(1) + '/' + paramsPath,
+        Body: processedImage,
+        ContentType: 'image/' + params.format
+      });
+      console.log(originalPath.substring(1) + '/' + paramsPath);
+    }
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'image/' + params.format);

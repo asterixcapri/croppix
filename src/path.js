@@ -43,8 +43,18 @@ export const parsePath = (path) => {
   const paramsPath = pathParts[pathParts.length - 1];
   const originalPath = pathParts.slice(0, -1).join('/');
 
-  if (!paramsPath.includes('_')) {
-    throw new InvalidPathError(`Path is invalid: ${path}`);
+  if (paramsPath === 'original') {
+    params.original = true;
+
+    console.log(originalPath);
+    console.log(params);
+    console.log(paramsPath);
+
+    return {
+      originalPath,
+      params,
+      paramsPath: null
+    };
   }
 
   const paramsParts = paramsPath.split('.');
@@ -113,14 +123,12 @@ export const parsePath = (path) => {
           params.density = density;
         }
         break;
-
-      case 'o': // original
-        if (pathParamValue === '1' || pathParamValue.toLowerCase() === 'true') {
-          params.original = true;
-        }
-        break;
     }
   }
+
+  console.log(originalPath);
+  console.log(params);
+  console.log(paramsPath);
 
   return { originalPath, params, paramsPath };
 };
