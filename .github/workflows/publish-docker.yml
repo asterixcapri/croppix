@@ -19,7 +19,9 @@ jobs:
 
       - name: Read package version
         id: vars
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
