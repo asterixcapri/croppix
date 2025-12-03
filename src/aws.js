@@ -1,6 +1,5 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { RekognitionClient, DetectLabelsCommand } from '@aws-sdk/client-rekognition';
-import sharp from 'sharp';
+import { RekognitionClient, DetectLabelsCommand, DetectFacesCommand } from '@aws-sdk/client-rekognition';
 import { NotFoundError } from './errors.js';
 
 const awsCredentials = {
@@ -44,38 +43,20 @@ export const awsPut = async (input) => {
   }
 };
 
-export const awsDetectSubject = async (imageBuffer, metadata) => {
-  if (metadata.format !== 'jpeg') {
-    imageBuffer = await sharp(imageBuffer).jpeg().toBuffer();
-  }
+export const awsDetectFaces = async (imageBuffer) => {
+  const command = new DetectFacesCommand({
+    Image: { Bytes: imageBuffer },
+    Attributes: ['DEFAULT']
+  });
 
+  return await rekognitionClient.send(command);
+};
+
+export const awsDetectLabels = async (imageBuffer) => {
   const command = new DetectLabelsCommand({
     Image: { Bytes: imageBuffer },
     MinConfidence: 70
   });
 
-  try {
-    const response = await rekognitionClient.send(command);
-
-    // Find objects with bounding boxes, sorted by confidence
-    const withBox = response.Labels
-      .filter(label => label.Instances?.length > 0)
-      .sort((a, b) => b.Confidence - a.Confidence);
-
-    if (withBox.length === 0) {
-      return null;
-    }
-
-    // Get the bounding box of the most confident object and convert to pixel coordinates
-    const box = withBox[0].Instances[0].BoundingBox;
-
-    return {
-      x: Math.round(box.Left * metadata.width),
-      y: Math.round(box.Top * metadata.height),
-      width: Math.round(box.Width * metadata.width),
-      height: Math.round(box.Height * metadata.height)
-    };
-  } catch (error) {
-    return null;
-  }
+  return await rekognitionClient.send(command);
 };

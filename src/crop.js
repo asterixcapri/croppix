@@ -1,10 +1,9 @@
 import sharp from 'sharp';
-import { awsDetectSubject } from './aws.js';
-import { log } from './logger.js';
+import { detectSubject } from './detect.js';
 
 export const applyCropSmart = async (imageBuffer, params, metadata) => {
   // Try to detect main subject using Amazon Rekognition
-  const subjectBox = await awsDetectSubject(imageBuffer, metadata);
+  const subjectBox = await detectSubject(imageBuffer, metadata);
 
   if (subjectBox) {
     const cropRect = calculateCropRect(subjectBox, metadata, params);
@@ -21,8 +20,6 @@ export const applyCropSmart = async (imageBuffer, params, metadata) => {
     });
   } else {
     // Fallback to sharp's attention strategy
-    log('No subject detected, using attention strategy');
-
     return sharp(imageBuffer).resize({
       width: params.width,
       height: params.height,
