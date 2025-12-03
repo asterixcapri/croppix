@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import { awsDetectSubject } from './aws.js';
+import { log } from './logger.js';
 
 export const applyCropSmart = async (imageBuffer, params, metadata) => {
   // Try to detect main subject using Amazon Rekognition
@@ -20,6 +21,8 @@ export const applyCropSmart = async (imageBuffer, params, metadata) => {
     });
   } else {
     // Fallback to sharp's attention strategy
+    log('No subject detected, using attention strategy');
+
     return sharp(imageBuffer).resize({
       width: params.width,
       height: params.height,

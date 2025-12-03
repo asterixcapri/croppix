@@ -1,4 +1,4 @@
-import { InvalidPathError, UnsupportedFileExtensionError } from './errors.js';
+import { NotFoundError } from './errors.js';
 
 export const parsePath = (path) => {
   const params = {
@@ -36,7 +36,7 @@ export const parsePath = (path) => {
   };
 
   if (!path) {
-    throw new InvalidPathError('Path is required');
+    throw new NotFoundError('Path is required');
   }
 
   const pathParts = path.split('/');
@@ -61,7 +61,7 @@ export const parsePath = (path) => {
   const format = paramsParts.pop().toLowerCase();
 
   if (!allowed.formats.includes(format)) {
-    throw new UnsupportedFileExtensionError(`Image format not allowed: ${format}`);
+    throw new NotFoundError(`Image format not allowed: ${format}`);
   }
 
   params.format = format === 'jpg' ? 'jpeg' : format;
@@ -125,10 +125,6 @@ export const parsePath = (path) => {
         break;
     }
   }
-
-  console.log(originalPath);
-  console.log(params);
-  console.log(paramsPath);
 
   return { originalPath, params, paramsPath };
 };

@@ -1,7 +1,6 @@
 import sharp from 'sharp';
 import { applyCropSmart, applyCropNone, applyCropOther } from './crop.js';
 import { optimize } from './optimize.js';
-import { ImageProcessingError } from './errors.js';
 
 export const processImage = async (imageBuffer, params) => {
   if (params.original) {
@@ -30,7 +29,7 @@ export const processImage = async (imageBuffer, params) => {
   }
 
   if (!result) {
-    throw new ImageProcessingError('Failed to process image');
+    throw new Error('Failed to process image');
   }
 
   return await optimize(result, params);

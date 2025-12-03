@@ -3,6 +3,8 @@ import process from 'process';
 import { parsePath } from './path.js';
 import { processImage } from './process.js';
 import { awsGet, awsPut } from './aws.js';
+import { NotFoundError } from './errors.js';
+import { logRequest } from './logger.js';
 
 const options = {
   hostname: process.env.HOSTNAME || '0.0.0.0',
@@ -24,32 +26,31 @@ const server = http.createServer(async (req, res) => {
       throw new Error('No image data');
     }
 
-    // Only cache processed images, not originals
-    if (paramsPath) {
+    if (!params.original) {
       await awsPut({
         Bucket: process.env.AWS_BUCKET_CACHE,
         Key: originalPath.substring(1) + '/' + paramsPath,
         Body: processedImage,
         ContentType: 'image/' + params.format
       });
-      console.log(originalPath.substring(1) + '/' + paramsPath);
     }
 
+    logRequest(200, req.url);
     res.statusCode = 200;
     res.setHeader('Content-Type', 'image/' + params.format);
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     res.end(Buffer.from(processedImage));
   } catch (err) {
-    console.error(err);
-
-    if (err instanceof Error) {
-      res.statusCode = 400;
-      res.setHeader('Content-Type', 'text/plain');
-      res.end(err.name + ': ' + err.message);
-    } else {
+    if (err instanceof NotFoundError) {
+      logRequest(404, req.url, err.message);
       res.statusCode = 404;
       res.setHeader('Content-Type', 'text/plain');
       res.end('Not found');
+    } else {
+      logRequest(500, req.url, err.message);
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'text/plain');
+      res.end('Internal server error');
     }
   }
 });

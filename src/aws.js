@@ -1,6 +1,7 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { RekognitionClient, DetectLabelsCommand } from '@aws-sdk/client-rekognition';
 import sharp from 'sharp';
+import { NotFoundError } from './errors.js';
 
 const awsCredentials = {
   region: process.env.AWS_REGION,
@@ -27,9 +28,7 @@ export const awsGet = async (input) => {
       response.Body.on('error', reject);
     });
   } catch (error) {
-    throw new Error(
-      `Get from S3 failed: ${error.message}. Bucket: ${input.Bucket}. Key: ${input.Key}`
-    );
+    throw new NotFoundError(error.message);
   }
 };
 
@@ -41,9 +40,7 @@ export const awsPut = async (input) => {
     await s3Client.send(command);
     return `s3://${input.Bucket}/${input.Key}`;
   } catch (error) {
-    throw new Error(
-      `Put to S3 failed: ${error.message}. Bucket: ${input.Bucket}. Key: ${input.Key}`
-    );
+    throw new Error(error.message);
   }
 };
 
@@ -79,7 +76,6 @@ export const awsDetectSubject = async (imageBuffer, metadata) => {
       height: Math.round(box.Height * metadata.height)
     };
   } catch (error) {
-    console.error('Rekognition awsDetectSubject failed:', error.message);
     return null;
   }
 };
