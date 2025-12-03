@@ -1,4 +1,4 @@
-FROM node:22.14.0-bookworm-slim
+FROM node:22.21.1-trixie-slim
 
 RUN corepack enable
 
