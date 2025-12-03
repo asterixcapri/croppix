@@ -4,7 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://www.tldrlegal.com/license/mit-license)
 [![GitHub stars](https://img.shields.io/github/stars/asterixcapri/croppix?style=social)](https://github.com/asterixcapri/croppix)
 
-**Croppix** is an open-source image processing service based on [Sharp](https://sharp.pixelplumbing.com/) and [Smartcrop](https://github.com/jwagner/smartcrop.js), allowing dynamic generation of cropped and optimized images directly from URL parameters, with intelligent caching support on AWS S3.
+**Croppix** is an open-source image processing service based on [Sharp](https://sharp.pixelplumbing.com/) and [Amazon Rekognition](https://aws.amazon.com/rekognition/), allowing dynamic generation of cropped and optimized images directly from URL parameters, with intelligent caching support on AWS S3.
+
+The smart crop feature uses Amazon Rekognition to detect the main subject in an image, ensuring the most important content is always visible in the cropped result.
 
 Croppix is designed to be integrated into high-performance websites, serving optimized images directly from a CDN (like CloudFront), with automatic fallback to a processing server when cache is missed.
 
@@ -69,6 +71,7 @@ Croppix is designed to work behind a **CloudFront distribution** with two origin
 
 ### 📊 Architecture Benefits
 
+- 🤖 **AI-powered smart crop** using Amazon Rekognition for subject detection
 - ⚡ High performance via CloudFront + S3
 - 👊 Croppix server is hit only on cache misses
 - 📆 Fully cacheable and URL-customizable images
@@ -112,11 +115,13 @@ Parameters can be combined with `_` and used in any order.
 
 ## ✂️ Supported Crop Types (`c{crop}`)
 
-Croppix supports the following crop modes via the `c{crop}` parameter:
+Croppix supports the following crop modes via the `c{crop}` parameter.
+
+> **Note:** The `smart` crop uses Amazon Rekognition to detect objects in the image. If no subject is detected (e.g., abstract images or landscapes without distinct objects), it automatically falls back to Sharp's `attention` strategy.
 
 | Value        | Description |
 |---------------|----------------------------------------------------------------------------------|
-| `smart`       | Smart crop on the main subject (uses `smartcrop`)                               |
+| `smart`       | AI-powered smart crop using Amazon Rekognition to detect the main subject       |
 | `none`        | No crop: resize and fill with the average background color                      |
 | `entropy`     | Crop area with highest entropy (Sharp)                                          |
 | `attention`   | Crop area with visual attention (Sharp)                                         |
@@ -196,6 +201,36 @@ AWS_BUCKET_CACHE=your-cache-bucket
 ```
 
 The Docker container will automatically load these variables if referenced in `docker-compose.yml`.
+
+### IAM Permissions
+
+The AWS credentials must have the following permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::your-source-bucket/*",
+        "arn:aws:s3:::your-cache-bucket/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "rekognition:DetectLabels",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+The `rekognition:DetectLabels` permission is required for the smart crop feature.
 
 ## 💬 Support & Contributions
 
