@@ -45,10 +45,10 @@ The `csmart` crop mode uses AWS Rekognition to intelligently detect the main sub
 
 | Case | Condition | Action | Log Example |
 |------|-----------|--------|-------------|
-| **Portrait** | 1 face ≥5% | Face box with padding | `Detection: portrait (1 face, 8.5%)` |
+| **Portrait** | 1 face ≥5% | Face box with padding | `Detection: portrait (8.5%)` |
 | **Faces with prominent** | Multiple faces, largest ≥5% | Combined box | `Detection: faces with prominent (3 faces, largest 12.0%)` |
 | **Group photo** | ≥3 faces, all <5% | Combined box | `Detection: group photo (8 faces, largest 2.1%)` |
-| **Background faces** | 1-2 faces, all <5% | Sharp attention | `Detection: background faces (2 faces, 0.5%) → sharp attention` |
+| **Small faces** | 1-2 faces, all <5% | Sharp attention | `Detection: small faces (2 faces, 0.5%) → sharp attention` |
 | **No faces** | 0 faces | Sharp attention | `Detection: no faces → sharp attention` |
 | **Error** | API failure | Sharp attention | `Detection: error (message) → sharp attention` |
 

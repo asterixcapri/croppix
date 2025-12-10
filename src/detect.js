@@ -2,8 +2,8 @@ import sharp from 'sharp';
 import { awsDetectFaces } from './aws.js';
 import { log } from './logger.js';
 
-const FACE_PROMINENCE_THRESHOLD = 5; // percentage of image area
-const GROUP_PHOTO_MIN_FACES = 3;     // minimum faces to consider it a group photo
+const FACE_PROMINENCE_THRESHOLD = 0.5; // percentage of image area
+const GROUP_PHOTO_MIN_FACES = 2;     // minimum faces to consider it a group photo
 
 export const detectSubject = async (imageBuffer, metadata) => {
   if (metadata.format !== 'jpeg') {
@@ -37,10 +37,10 @@ const detectFaces = async (imageBuffer, metadata) => {
 
     const largestFace = Math.max(...faces.map(f => f.percentage));
 
-    // Case 1: Prominent face (portrait or group with main subject)
+    // Case 1: At least one prominent face - use faces
     if (largestFace >= FACE_PROMINENCE_THRESHOLD) {
       if (faceCount === 1) {
-        log(`Detection: portrait (1 face, ${largestFace.toFixed(1)}%)`);
+        log(`Detection: portrait (${largestFace.toFixed(1)}%)`);
         return createFaceBox(faces[0].box, metadata);
       }
       log(`Detection: faces with prominent (${faceCount} faces, largest ${largestFace.toFixed(1)}%)`);
@@ -53,8 +53,8 @@ const detectFaces = async (imageBuffer, metadata) => {
       return createCombinedFaceBox(response.FaceDetails, metadata);
     }
 
-    // Case 3: Few small faces - background people
-    log(`Detection: background faces (${faceCount} faces, ${largestFace.toFixed(1)}%) → sharp attention`);
+    // Case 3: Few small faces - probably background people
+    log(`Detection: small faces (${faceCount} faces, ${largestFace.toFixed(1)}%) → sharp attention`);
     return null;
 
   } catch (error) {
