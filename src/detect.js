@@ -6,12 +6,14 @@ const FACE_PROMINENCE_THRESHOLD = 0.5; // percentage of image area
 const GROUP_PHOTO_MIN_FACES = 2;     // minimum faces to consider it a group photo
 
 export const detectSubject = async (imageBuffer, metadata) => {
+  // Face detection temporarily disabled - always use sharp attention
+  // TODO: re-enable and test face detection
+  return null;
+
   if (metadata.format !== 'jpeg') {
     imageBuffer = await sharp(imageBuffer).jpeg().toBuffer();
   }
-
   const faceBox = await detectFaces(imageBuffer, metadata);
-
   return faceBox;
 };
 
