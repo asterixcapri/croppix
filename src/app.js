@@ -3,6 +3,7 @@ import process from 'process';
 import { parsePath } from './path.js';
 import { processImage } from './process.js';
 import { awsGet, awsPut } from './aws.js';
+import { fetchRemote } from './remote.js';
 import { NotFoundError } from './errors.js';
 import { logRequest } from './logger.js';
 
@@ -13,12 +14,14 @@ const options = {
 
 const server = http.createServer(async (req, res) => {
   try {
-    const { originalPath, params, paramsPath } = parsePath(req.url);
+    const { sourcePath, isRemote, params } = parsePath(req.url);
 
-    const imageBuffer = await awsGet({
-      Bucket: process.env.AWS_BUCKET,
-      Key: originalPath.substring(1)
-    });
+    const imageBuffer = isRemote
+      ? await fetchRemote(sourcePath)
+      : await awsGet({
+          Bucket: process.env.AWS_BUCKET,
+          Key: sourcePath
+        });
 
     const processedImage = await processImage(imageBuffer, params);
 
@@ -28,7 +31,7 @@ const server = http.createServer(async (req, res) => {
 
     await awsPut({
       Bucket: process.env.AWS_BUCKET_CACHE,
-      Key: originalPath.substring(1) + '/' + paramsPath,
+      Key: req.url.substring(1).replace('://', '/'),
       Body: processedImage,
       ContentType: 'image/' + params.format
     });

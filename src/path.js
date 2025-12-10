@@ -39,18 +39,17 @@ export const parsePath = (path) => {
     throw new NotFoundError('Path is required');
   }
 
-  const pathParts = path.split('/');
-  const paramsPath = pathParts[pathParts.length - 1];
-  const originalPath = pathParts.slice(0, -1).join('/');
+  const pathWithoutSlash = path.substring(1);
+  const isRemote = pathWithoutSlash.startsWith('http://') || pathWithoutSlash.startsWith('https://');
+
+  const lastSlash = pathWithoutSlash.lastIndexOf('/');
+  const sourcePath = pathWithoutSlash.substring(0, lastSlash);
+  const paramsPath = pathWithoutSlash.substring(lastSlash + 1);
 
   if (paramsPath === 'original') {
     params.original = true;
 
-    return {
-      originalPath,
-      params,
-      paramsPath: null
-    };
+    return { sourcePath, isRemote, params };
   }
 
   const paramsParts = paramsPath.split('.');
@@ -136,5 +135,5 @@ export const parsePath = (path) => {
     }
   }
 
-  return { originalPath, params, paramsPath };
+  return { sourcePath, isRemote, params };
 };
