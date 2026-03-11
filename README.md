@@ -14,6 +14,7 @@ Croppix is designed to be integrated into high-performance websites, serving opt
 
 - [🚀 Architecture and Production Deployment](#🚀-architecture-and-production-deployment)
 - [🔧 Features and Quick Start with Docker](#🔧-features-and-quick-start-with-docker)
+- [⚡ AWS Lambda Deployment](#⚡-aws-lambda-deployment)
 - [📂 URL Parameters for Image Transformations](#📂-url-parameters-for-image-transformations)
 - [✂️ Supported Crop Types (`c{crop}`)](#✂️-supported-crop-types-ccrop)
 - [🧑‍💻 Local Development Setup](#🧑‍💻-local-development-setup)
@@ -81,6 +82,105 @@ Croppix is designed to work behind a **CloudFront distribution** with two origin
 - ⚡ Output in WebP, JPEG, PNG and more
 - 🔄 Smart crop, resize, retina scaling, cache busting
 - ⚙ Docker-ready
+
+## ⚡ AWS Lambda Deployment
+
+Croppix can also run as an **AWS Lambda function** using a container image. This is ideal for low-traffic sites where you don't want to maintain a running server — Lambda processes images on-demand and caches them on S3, with near-zero cost after the initial warm-up.
+
+### Lambda Architecture
+
+```
+Client → CloudFront
+           ├── Origin 1 (Primary): S3 cache bucket
+           │   └── Cache hit → serve immediately
+           └── Origin 2 (Fallback on 403/404): Lambda Function URL
+               └── Process image → save to S3 cache → return
+```
+
+After the first request for each image variant, all subsequent requests are served directly from S3 via CloudFront — Lambda is never invoked again.
+
+### Multi-Tenant Mode
+
+When `AWS_BUCKET` is **not set**, Croppix extracts the source bucket name from the first URL path segment. This allows a single Lambda deployment to serve multiple sites:
+
+```
+/<bucket>/<image-path>/<params>.<format>
+```
+
+Example:
+```
+https://your-cloudfront.net/my-site-bucket/images/hero.jpg/w800.webp
+https://your-cloudfront.net/another-site-bucket/photos/pool.jpg/w400.webp
+```
+
+When `AWS_BUCKET` **is set** (e.g., in Docker), the URL format remains unchanged:
+```
+/<image-path>/<params>.<format>
+```
+
+### Building the Lambda Image
+
+```bash
+docker build -f Dockerfile.lambda --provenance=false -t croppix-lambda .
+```
+
+> **Note:** `--provenance=false` is required to produce a Docker v2 manifest compatible with AWS Lambda.
+
+### Deploying to AWS
+
+```bash
+# 1. Create ECR repository (one-time)
+aws ecr create-repository --repository-name croppix
+
+# 2. Login, tag and push
+aws ecr get-login-password | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<region>.amazonaws.com
+docker tag croppix-lambda <account-id>.dkr.ecr.<region>.amazonaws.com/croppix:latest
+docker push <account-id>.dkr.ecr.<region>.amazonaws.com/croppix:latest
+
+# 3. Create Lambda function
+aws lambda create-function \
+  --function-name croppix \
+  --package-type Image \
+  --code ImageUri=<account-id>.dkr.ecr.<region>.amazonaws.com/croppix:latest \
+  --role <lambda-role-arn> \
+  --memory-size 1024 \
+  --timeout 60 \
+  --environment "Variables={AWS_BUCKET_CACHE=your-cache-bucket}"
+
+# 4. Create Function URL (public access)
+aws lambda create-function-url-config --function-name croppix --auth-type NONE
+aws lambda add-permission --function-name croppix \
+  --statement-id FunctionURLAllowPublicAccess \
+  --action lambda:InvokeFunctionUrl --principal "*" --function-url-auth-type NONE
+aws lambda add-permission --function-name croppix \
+  --statement-id FunctionURLInvokeAllowPublicAccess \
+  --action lambda:InvokeFunction --principal "*"
+```
+
+Then configure a CloudFront distribution with an **Origin Group** (failover):
+- **Primary**: S3 cache bucket (with Origin Access Control)
+- **Fallback** (on 403/404): Lambda Function URL
+
+### Updating the Lambda
+
+```bash
+docker build -f Dockerfile.lambda --provenance=false -t croppix-lambda .
+docker tag croppix-lambda <account-id>.dkr.ecr.<region>.amazonaws.com/croppix:latest
+docker push <account-id>.dkr.ecr.<region>.amazonaws.com/croppix:latest
+aws lambda update-function-code --function-name croppix \
+  --image-uri <account-id>.dkr.ecr.<region>.amazonaws.com/croppix:latest
+```
+
+### Lambda Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AWS_BUCKET_CACHE` | Yes | S3 bucket for cached processed images |
+| `AWS_BUCKET` | No | Source S3 bucket. If not set, multi-tenant mode is enabled (bucket extracted from URL) |
+
+### AWS Credentials
+
+Croppix uses the default AWS SDK credential chain. On Lambda, credentials are automatically provided by the IAM execution role — no `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` needed. In Docker, the SDK reads them from environment variables automatically.
 
 ## 📂 URL Parameters for Image Transformations
 
@@ -209,6 +309,8 @@ AWS_BUCKET_CACHE=your-cache-bucket
 ```
 
 The Docker container will automatically load these variables if referenced in `docker-compose.yml`.
+
+> **Note:** `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are read automatically by the AWS SDK from environment variables — they don't need to be passed explicitly in code. On Lambda, the SDK uses the IAM execution role instead.
 
 ### IAM Permissions
 
