@@ -3,11 +3,7 @@ import { RekognitionClient, DetectLabelsCommand, DetectFacesCommand } from '@aws
 import { NotFoundError } from './errors.js';
 
 const awsCredentials = {
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  }
+  ...(process.env.AWS_REGION && { region: process.env.AWS_REGION }),
 };
 
 const s3Client = new S3Client(awsCredentials);

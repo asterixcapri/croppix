@@ -1,9 +1,6 @@
 import http from 'http';
 import process from 'process';
-import { parsePath } from './path.js';
-import { processImage } from './process.js';
-import { awsGet, awsPut } from './aws.js';
-import { fetchRemote } from './remote.js';
+import { handleRequest } from './handler.js';
 import { NotFoundError } from './errors.js';
 import { logRequest } from './logger.js';
 
@@ -14,33 +11,13 @@ const options = {
 
 const server = http.createServer(async (req, res) => {
   try {
-    const { sourcePath, isRemote, params } = parsePath(req.url);
-
-    const imageBuffer = isRemote
-      ? await fetchRemote(sourcePath)
-      : await awsGet({
-          Bucket: process.env.AWS_BUCKET,
-          Key: sourcePath
-        });
-
-    const processedImage = await processImage(imageBuffer, params);
-
-    if (!processedImage) {
-      throw new Error('No image data');
-    }
-
-    await awsPut({
-      Bucket: process.env.AWS_BUCKET_CACHE,
-      Key: req.url.substring(1).replace('://', '/'),
-      Body: processedImage,
-      ContentType: 'image/' + params.format
-    });
+    const result = await handleRequest(req.url);
 
     logRequest(200, req.url);
     res.statusCode = 200;
-    res.setHeader('Content-Type', 'image/' + params.format);
+    res.setHeader('Content-Type', result.contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    res.end(Buffer.from(processedImage));
+    res.end(result.buffer);
   } catch (err) {
     if (err instanceof NotFoundError) {
       logRequest(404, req.url, err.message);
