@@ -39,7 +39,15 @@ export const parsePath = (path) => {
     throw new NotFoundError('Path is required');
   }
 
-  const pathWithoutSlash = path.substring(1);
+  const rawPathWithoutSlash = path.substring(1);
+  let pathWithoutSlash = rawPathWithoutSlash;
+
+  try {
+    pathWithoutSlash = decodeURIComponent(rawPathWithoutSlash);
+  } catch {
+    pathWithoutSlash = rawPathWithoutSlash;
+  }
+
   const isRemote = pathWithoutSlash.startsWith('http://') || pathWithoutSlash.startsWith('https://');
 
   const lastSlash = pathWithoutSlash.lastIndexOf('/');
