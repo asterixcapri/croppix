@@ -10,6 +10,19 @@ The smart crop feature uses Amazon Rekognition to detect the main subject in an 
 
 Croppix is designed to be integrated into high-performance websites, serving optimized images directly from a CDN (like CloudFront), with automatic fallback to a processing server when cache is missed.
 
+## 📦 Distribution
+
+Croppix is published as two Docker image variants under the same Docker Hub repository:
+
+- Standard runtime:
+  - `asterixcapri/croppix:<version>`
+  - `asterixcapri/croppix:latest`
+- AWS Lambda runtime:
+  - `asterixcapri/croppix:<version>-lambda`
+  - `asterixcapri/croppix:lambda-latest`
+
+Docker images are published automatically when a GitHub Release is published.
+
 ## 🔍 Table of Contents
 
 - [🚀 Architecture and Production Deployment](#🚀-architecture-and-production-deployment)
@@ -196,6 +209,26 @@ https://your-croppix-domain.com/<image-path>/<transform-params>.<format>
 https://your-croppix-domain.com/photos/image123.jpg/w400_h300_d2_csmart_u1712345678.webp
 ```
 
+### Remote Source URLs
+
+Croppix also supports remote source images. In that case, the source URL becomes the image path:
+
+```
+https://your-croppix-domain.com/https://images.example.com/photo.jpg/w800.webp
+```
+
+If the remote source URL contains a query string, the full source URL must be URL-encoded before being embedded into the Croppix path:
+
+```
+https://your-croppix-domain.com/https%3A%2F%2Fimages.example.com%2Fphoto.jpg%3Fw%3D800%26h%3D600/w1200.webp
+```
+
+In multi-tenant mode, the source bucket stays as the first path segment, followed by the encoded remote URL:
+
+```
+https://your-croppix-domain.com/<bucket>/https%3A%2F%2Fimages.example.com%2Fphoto.jpg%3Fw%3D800%26h%3D600/w1200.webp
+```
+
 ### Supported Parameters
 
 | Parameter        | Description |
@@ -254,7 +287,10 @@ const croppixBaseUrl = 'https://your-croppix-domain.com';
 
 export const croppixUrl = (path, params = {}) => {
   if (!path) return '';
-  return croppixBaseUrl + encodeURI(path) + formatParams(params);
+  const encodedPath = path.startsWith('http://') || path.startsWith('https://')
+    ? '/' + encodeURIComponent(path)
+    : encodeURI(path);
+  return croppixBaseUrl + encodedPath + formatParams(params);
 };
 
 const formatParams = (params = {}) => {
