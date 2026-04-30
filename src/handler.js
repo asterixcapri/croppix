@@ -57,7 +57,8 @@ export async function handleRequest(url) {
     Bucket: process.env.AWS_BUCKET_CACHE,
     Key: url.substring(1).replace('://', '/'),
     Body: processedImage,
-    ContentType: contentType
+    ContentType: contentType,
+    CacheControl: 'public, max-age=31536000, immutable'
   });
 
   return { buffer, contentType };
