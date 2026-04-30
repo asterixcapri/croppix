@@ -5,7 +5,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/asterixcapri/croppix"
+    "url": "git+https://github.com/asterixcapri/croppix.git"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.943.0",
