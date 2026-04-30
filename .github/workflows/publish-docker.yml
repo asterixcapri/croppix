@@ -22,6 +22,11 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -40,3 +45,15 @@ jobs:
           push: true
           tags: |
             asterixcapri/croppix:${{ steps.vars.outputs.version }}
+            ${{ steps.vars.outputs.is_prerelease == 'false' && 'asterixcapri/croppix:latest' || '' }}
+
+      - name: Build and push Lambda Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.lambda
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            asterixcapri/croppix:${{ steps.vars.outputs.version }}-lambda
+            ${{ steps.vars.outputs.is_prerelease == 'false' && 'asterixcapri/croppix:lambda-latest' || '' }}
