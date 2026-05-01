@@ -4,7 +4,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-COPY .npmrc ./
 RUN npm install --omit=dev
 
 COPY . .
