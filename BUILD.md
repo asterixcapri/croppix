@@ -16,6 +16,8 @@ The recommended release path is:
 3. publish a GitHub Release
 4. let GitHub Actions publish both Docker images
 
+In the commands below, replace `<version>` with the release version you are publishing, typically the same version declared in `package.json`.
+
 ## Local builds
 
 ### Standard image
@@ -24,7 +26,7 @@ Build:
 
 ```bash
 docker build --no-cache \
-  -t asterixcapri/croppix:2.1.1 \
+  -t asterixcapri/croppix:<version> \
   -t asterixcapri/croppix:latest \
   .
 ```
@@ -35,7 +37,7 @@ Build multi-arch and push:
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --no-cache \
-  -t asterixcapri/croppix:2.1.1 \
+  -t asterixcapri/croppix:<version> \
   -t asterixcapri/croppix:latest \
   . \
   --push
@@ -53,7 +55,7 @@ Build:
 
 ```bash
 docker build -f Dockerfile.lambda --provenance=false --no-cache \
-  -t asterixcapri/croppix:2.1.1-lambda \
+  -t asterixcapri/croppix:<version>-lambda \
   -t asterixcapri/croppix:lambda-latest \
   .
 ```
@@ -66,7 +68,7 @@ docker buildx build \
   --provenance=false \
   --no-cache \
   -f Dockerfile.lambda \
-  -t asterixcapri/croppix:2.1.1-lambda \
+  -t asterixcapri/croppix:<version>-lambda \
   -t asterixcapri/croppix:lambda-latest \
   . \
   --push

@@ -1,80 +1,179 @@
 # Smart Crop Detection Algorithm
 
-The `csmart` crop mode uses AWS Rekognition to intelligently detect the main subject in an image.
+The `csmart` crop mode supports two engines selected with `SMART_CROP_ENGINE`:
 
-## Algorithm Flow
+- `rekognition` (default): uses Amazon Rekognition to detect the most relevant subject
+- `attention`: skips Rekognition and delegates directly to Sharp's `attention` strategy
 
-```
-┌─────────────────────────────────────────┐
-│         AWS Rekognition                 │
-│         Detect Faces                    │
-└─────────────────────────────────────────┘
-                    │
-                    ▼
-            ┌───────────────┐
-            │ Faces found?  │
-            └───────┬───────┘
-                    │
-        ┌───────────┴───────────┐
-        │ NO                    │ YES
-        ▼                       ▼
-┌───────────────┐       ┌───────────────────┐
-│ Sharp         │       │ Largest face ≥5%? │
-│ Attention     │       │ (prominent)       │
-└───────────────┘       └─────────┬─────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    │ YES                       │ NO
-                    ▼                           ▼
-            ┌───────────────┐           ┌───────────────┐
-            │ Use face box  │           │ ≥3 faces?     │
-            │ with padding  │           │ (group photo) │
-            └───────────────┘           └───────┬───────┘
-                                                │
-                                  ┌─────────────┴─────────────┐
-                                  │ YES                       │ NO
-                                  ▼                           ▼
-                          ┌───────────────┐           ┌───────────────┐
-                          │ Use combined  │           │ Sharp         │
-                          │ face box      │           │ Attention     │
-                          └───────────────┘           │ (background)  │
-                                                      └───────────────┘
-```
+This document describes the default `rekognition` flow implemented in the codebase.
 
-## Detection Cases
+## High-Level Flow
 
-| Case | Condition | Action | Log Example |
-|------|-----------|--------|-------------|
-| **Portrait** | 1 face ≥5% | Face box with padding | `Detection: portrait (8.5%)` |
-| **Faces with prominent** | Multiple faces, largest ≥5% | Combined box | `Detection: faces with prominent (3 faces, largest 12.0%)` |
-| **Group photo** | ≥3 faces, all <5% | Combined box | `Detection: group photo (8 faces, largest 2.1%)` |
-| **Small faces** | 1-2 faces, all <5% | Sharp attention | `Detection: small faces (2 faces, 0.5%) → sharp attention` |
-| **No faces** | 0 faces | Sharp attention | `Detection: no faces → sharp attention` |
-| **Error** | API failure | Sharp attention | `Detection: error (message) → sharp attention` |
-
-## Configuration
-
-```javascript
-const FACE_PROMINENCE_THRESHOLD = 5;  // % of image area
-const GROUP_PHOTO_MIN_FACES = 3;      // minimum faces for group photo
+```text
+SMART_CROP_ENGINE=attention?
+        │
+   yes  ▼
+   ┌───────────────┐
+   │ Sharp         │
+   │ attention     │
+   └───────────────┘
+        │
+   no   ▼
+┌──────────────────────┐
+│ Rekognition          │
+│ DetectLabels         │
+└──────────┬───────────┘
+           │
+           ▼
+   Candidate instances?
+           │
+   no      ▼
+   ┌───────────────┐
+   │ Sharp         │
+   │ attention     │
+   └───────────────┘
+           │
+   yes     ▼
+   Pick highest-ranked instance
+           │
+           ▼
+   Human subject?
+           │
+      yes  ▼
+┌──────────────────────┐
+│ Rekognition          │
+│ DetectFaces          │
+└──────────┬───────────┘
+           │
+     faces found?
+      │         │
+   yes▼         ▼no
+ use face   use label box
+ anchor     or merged box
+           │
+           ▼
+   Crop around subject box
+   and resize to target
 ```
 
-## Face Box Padding
+## Subject Detection
 
-When a face is detected, padding is added to include hair and context:
+`DetectLabels` is the primary signal. The algorithm:
 
-- **Top**: 50% of face height (for hair/head)
-- **Bottom**: 20% of face height
-- **Sides**: 30% of face width
+1. Converts the input to JPEG before calling Rekognition when needed.
+2. Reads label instances and ignores labels without bounding boxes.
+3. Filters out weak detections:
+   - minimum confidence: `70`
+   - minimum label instance area: `0.5%` of the image
+4. Scores remaining candidates by label priority, confidence, and size.
+5. Uses the highest-ranked candidate as the main subject.
 
-## Fallback: Sharp Attention
+## Label Priorities
 
-When no prominent faces are detected, the system falls back to Sharp's `attention` strategy, which uses libvips to find visually interesting areas (high contrast, edges, colors).
+The detector prefers some labels over others. Current priority groups are:
 
-This works well for:
-- Landscapes
-- Architecture
-- Objects
-- Boats
-- Any scene without prominent people
+| Priority | Labels |
+|----------|--------|
+| Highest | `Person`, `People` |
+| Very high | `Human`, `Woman`, `Man`, `Child`, `Baby` |
+| High | `Dog`, `Cat`, `Pet`, `Animal`, `Bird` |
+| Medium | `Car`, `Vehicle`, `Bicycle`, `Motorcycle`, `Boat` |
+| Lower | `Furniture`, `Chair`, `Sofa`, `Couch`, `Table`, `Mobile Phone`, `Laptop`, `Book` |
 
+This means a person is preferred over a boat, and a boat is preferred over furniture, even if the lower-priority object is slightly larger.
+
+## Human Subject Refinement
+
+When the top label is `Person` or `People`, the crop is refined with `DetectFaces`.
+
+### Face filtering
+
+Detected faces are kept only if they cover at least `0.25%` of the image.
+
+### Face handling
+
+- `1` face: use that face as the anchor
+- `2+` faces: merge all kept faces into a single combined box
+- `0` faces: fall back to the original label-based subject box
+
+### Face padding
+
+Face boxes get more generous padding than generic objects to avoid awkward crops:
+
+- top: `80%` of face height
+- bottom: `90%` of face height
+- left/right: `55%` of face width
+
+This intentionally keeps more headroom and surrounding context.
+
+## Multi-Instance Merging
+
+If the top candidate belongs to a mergeable label and multiple instances of that same label are present, those instances are merged into one subject box.
+
+Current mergeable labels:
+
+- `Person`
+- `People`
+- `Dog`
+- `Cat`
+- `Animal`
+- `Bird`
+
+This is useful for group photos, pets, or flocks where the crop should keep the full set together.
+
+## Generic Subject Padding
+
+When the final subject box comes from labels instead of faces, padding is applied before cropping:
+
+- vertical: `25%` of subject height
+- horizontal: `20%` of subject width
+
+Padding is always clamped to the image boundaries.
+
+## Crop Rectangle Calculation
+
+Once the final subject box is known, the crop rectangle is computed to:
+
+1. Match the requested output aspect ratio (`width / height`)
+2. Stay fully inside the source image
+3. Fully contain the detected subject
+4. Stay centered on the subject as much as possible
+
+If the target aspect ratio is wider than the source, the algorithm starts from full image width. Otherwise it starts from full image height, then adjusts while preserving the subject.
+
+## Fallback Cases
+
+The algorithm falls back to Sharp `attention` when:
+
+- `SMART_CROP_ENGINE=attention`
+- no usable label instances are returned
+- Rekognition label detection fails
+- no final subject box can be produced
+
+Face refinement failure alone does not trigger a full fallback. In that case the algorithm still uses the label-based subject box.
+
+## Detection Log Examples
+
+Typical logs emitted by the detector:
+
+- `Detection: no label instances → sharp attention`
+- `Detection: Person (98.4%, 14.2%)`
+- `Detection: merged Dog (2 instances)`
+- `Detection: refined with faces (3 person instances)`
+- `Detection: no faces for superwide refinement`
+- `Detection: error (AccessDeniedException) → sharp attention`
+
+## Configuration Summary
+
+```js
+SMART_CROP_ENGINE=rekognition // default
+SMART_CROP_ENGINE=attention
+```
+
+Key detection thresholds from the implementation:
+
+```js
+MIN_CONFIDENCE = 70;
+MIN_AREA_RATIO = 0.005;      // 0.5%
+FACE_MIN_AREA_RATIO = 0.0025; // 0.25%
+```

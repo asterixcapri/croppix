@@ -4,13 +4,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://www.tldrlegal.com/license/mit-license)
 [![GitHub stars](https://img.shields.io/github/stars/asterixcapri/croppix?style=social)](https://github.com/asterixcapri/croppix)
 
-**Croppix** is an open-source image processing service based on [Sharp](https://sharp.pixelplumbing.com/) and [Amazon Rekognition](https://aws.amazon.com/rekognition/), allowing dynamic generation of cropped and optimized images directly from URL parameters, with intelligent caching support on AWS S3.
+**Croppix** is an open-source image processing service built on [Sharp](https://sharp.pixelplumbing.com/) and [Amazon Rekognition](https://aws.amazon.com/rekognition/). It generates cropped and optimized images from URL parameters and caches results on AWS S3.
 
-The smart crop feature can use Amazon Rekognition to detect the main subject in an image, ensuring the most important content is always visible in the cropped result.
+Smart crop can use Amazon Rekognition to detect the main subject, rank subject categories from label instances, and refine human subjects with face detection when available.
 
 The `csmart` crop mode can be switched between two engines with the `SMART_CROP_ENGINE` environment variable: `rekognition` or `attention`.
 
-Croppix is designed to be integrated into high-performance websites, serving optimized images directly from a CDN (like CloudFront), with automatic fallback to a processing server when cache is missed.
+For the full detection flow and thresholds, see [SMART_CROP.md](SMART_CROP.md).
+
+Croppix is designed for high-performance websites, serving optimized images through a CDN such as CloudFront with automatic fallback to the processor on cache miss.
 
 ## 📦 Distribution
 
@@ -27,20 +29,93 @@ Docker images are published automatically when a GitHub Release is published.
 
 ## 🔍 Table of Contents
 
+- [✅ Recommended Path](#-recommended-path)
+- [⚡ Quick Start](#-quick-start)
+- [🧭 Choosing a Setup](#-choosing-a-setup)
 - [🚀 Architecture and Production Deployment](#🚀-architecture-and-production-deployment)
-- [🔧 Features and Quick Start with Docker](#🔧-features-and-quick-start-with-docker)
+- [🔧 Docker Deployment](#-docker-deployment)
 - [⚡ AWS Lambda Deployment](#⚡-aws-lambda-deployment)
 - [📂 URL Parameters for Image Transformations](#📂-url-parameters-for-image-transformations)
 - [✂️ Supported Crop Types (`c{crop}`)](#✂️-supported-crop-types-ccrop)
 - [🧑‍💻 Local Development Setup](#🧑‍💻-local-development-setup)
 - [⚖️ License](#⚖️-license)
 
+## ✅ Recommended Path
+
+If you are evaluating Croppix or deploying it for the first time, start with this setup:
+
+- one S3 bucket for originals: `AWS_BUCKET`
+- one S3 bucket for transformed images: `AWS_BUCKET_CACHE`
+- one Croppix container
+- one CloudFront distribution in front of the cache bucket and Croppix
+- `SMART_CROP_ENGINE=attention` if you want the simplest setup
+- `SMART_CROP_ENGINE=rekognition` if you want subject-aware smart crop
+
+This is the simplest path to production with good cache behavior and minimal moving parts.
+
+### Request Flow
+
+```text
+Browser
+  ↓
+CloudFront
+  ├─ cache hit on S3 cache bucket → serve image
+  └─ cache miss → Croppix
+                  ├─ read source from S3
+                  ├─ transform image
+                  ├─ save result to S3 cache
+                  └─ return image
+```
+
+## ⚡ Quick Start
+
+This example uses the standard Docker image and one source bucket.
+
+1. Run Croppix:
+
+```bash
+docker run -p 3003:3003 \
+  -e AWS_ACCESS_KEY_ID=xxx \
+  -e AWS_SECRET_ACCESS_KEY=xxx \
+  -e AWS_REGION=us-east-1 \
+  -e AWS_BUCKET=your-source-bucket \
+  -e AWS_BUCKET_CACHE=your-cache-bucket \
+  -e SMART_CROP_ENGINE=attention \
+  asterixcapri/croppix:latest
+```
+
+2. Request a transformed image:
+
+```text
+http://localhost:3003/photos/image123.jpg/w400_h300_csmart.webp
+```
+
+The source image must exist in `AWS_BUCKET` at `photos/image123.jpg`.
+
+3. Expected result:
+
+- Croppix reads `photos/image123.jpg` from `AWS_BUCKET`
+- generates a `400x300` WebP
+- stores the processed image in `AWS_BUCKET_CACHE`
+- returns the generated image
+
+If you want subject-aware smart crop and have Rekognition permissions configured, switch `SMART_CROP_ENGINE` to `rekognition`.
+
+## 🧭 Choosing a Setup
+
+| Need | Recommended choice |
+|------|--------------------|
+| Fastest evaluation or simplest setup | Docker + `SMART_CROP_ENGINE=attention` |
+| Best smart crop on people, pets, or clear subjects | Docker or Lambda + `SMART_CROP_ENGINE=rekognition` |
+| Predictable, always-on traffic | Standard Docker deployment |
+| Low traffic or bursty workloads | AWS Lambda deployment |
+| One deployment serving multiple source buckets | Lambda multi-tenant mode |
+
 ## 🚀 Architecture and Production Deployment
 
-Croppix typically runs as a Node.js service behind an Ingress (NGINX or ALB),
-with original images stored in an S3 bucket (`AWS_BUCKET`) and processed images stored in a separate bucket (`AWS_BUCKET_CACHE`).
+Croppix typically runs as a Node.js service behind an Ingress (NGINX or ALB), with original images stored in `AWS_BUCKET` and processed images stored in `AWS_BUCKET_CACHE`.
 
-Docker is recommended for deployment, along with CDN integration such as CloudFront.
+Docker is the recommended deployment target, usually behind CloudFront.
 
 ### 🔄 How it Works in Production
 
@@ -62,11 +137,13 @@ Docker is recommended for deployment, along with CDN integration such as CloudFr
 
 4. CloudFront caches the image for future requests
 
-## 🔧 Features and Quick Start with Docker
+## 🔧 Docker Deployment
 
 Croppix is also available as a Docker container:
 
 👉 [https://hub.docker.com/r/asterixcapri/croppix](https://hub.docker.com/r/asterixcapri/croppix)
+
+Use the standard image when you want a long-running processor behind a load balancer or CDN.
 
 You can run the container with:
 
@@ -87,7 +164,7 @@ Croppix is designed to work behind a **CloudFront distribution** with two origin
 
 ### 📊 Architecture Benefits
 
-- 🤖 **AI-powered smart crop** using Amazon Rekognition for subject detection
+- 🤖 **AI-powered smart crop** using Rekognition labels, optional face refinement, and Sharp fallback
 - ⚡ High performance via CloudFront + S3
 - 👊 Croppix server is hit only on cache misses
 - 📆 Fully cacheable and URL-customizable images
@@ -100,7 +177,7 @@ Croppix is designed to work behind a **CloudFront distribution** with two origin
 
 ## ⚡ AWS Lambda Deployment
 
-Croppix can also run as an **AWS Lambda function** using a container image. This is ideal for low-traffic sites where you don't want to maintain a running server — Lambda processes images on-demand and caches them on S3, with near-zero cost after the initial warm-up.
+Croppix can also run as an **AWS Lambda function** using a container image. This is a good fit for low-traffic sites where you do not want to run a server continuously. Lambda processes images on demand and caches them on S3.
 
 ### Lambda Architecture
 
@@ -112,7 +189,7 @@ Client → CloudFront
                └── Process image → save to S3 cache → return
 ```
 
-After the first request for each image variant, all subsequent requests are served directly from S3 via CloudFront — Lambda is never invoked again.
+After the first request for each image variant, later requests are served directly from S3 via CloudFront, so Lambda is not invoked again for that variant.
 
 ### Multi-Tenant Mode
 
@@ -259,15 +336,15 @@ Parameters can be combined with `_` and used in any order.
 
 ## ✂️ Supported Crop Types (`c{crop}`)
 
-Croppix supports the following crop modes via the `c{crop}` parameter.
+Croppix supports the following crop modes via `c{crop}`.
 
-> **Note:** With `SMART_CROP_ENGINE=rekognition`, the `smart` crop uses Amazon Rekognition labels as the base signal. When human subjects are detected, it also uses `DetectFaces` to refine the crop and avoid awkward face cuts. If no subject is detected, it automatically falls back to Sharp's `attention` strategy.
+> **Note:** With `SMART_CROP_ENGINE=rekognition`, the `smart` crop uses Amazon Rekognition `DetectLabels` as the primary signal, ranks known subject categories, merges multi-instance subjects for selected labels, and uses `DetectFaces` only to refine human subjects. If detection fails or no usable subject is found, it falls back to Sharp's `attention` strategy.
 
 > **Engine selection:** set `SMART_CROP_ENGINE=rekognition` or `SMART_CROP_ENGINE=attention` to choose how `csmart` behaves without changing URLs.
 
 | Value        | Description |
 |---------------|----------------------------------------------------------------------------------|
-| `smart`       | AI-powered smart crop using Amazon Rekognition to detect the main subject       |
+| `smart`       | AI-powered smart crop using Rekognition labels, optional face refinement, and Sharp fallback |
 | `none`        | No crop: resize and fill with the average background color                      |
 | `entropy`     | Crop area with highest entropy (Sharp)                                          |
 | `attention`   | Crop area with visual attention (Sharp)                                         |
@@ -284,7 +361,7 @@ Croppix supports the following crop modes via the `c{crop}` parameter.
 
 ## ℹ️ Optional JavaScript Example
 
-To dynamically generate Croppix URLs in a frontend app:
+To generate Croppix URLs in a frontend app:
 
 ```js
 const croppixBaseUrl = 'https://your-croppix-domain.com';
@@ -318,9 +395,11 @@ const formatParams = (params = {}) => {
 ### Requirements
 
 - Docker installed
+- AWS credentials with access to your S3 buckets
 - Two S3 buckets:
   - `AWS_BUCKET` for original images
   - `AWS_BUCKET_CACHE` for processed images
+- Amazon Rekognition permissions only if you use `SMART_CROP_ENGINE=rekognition`
 
 Everything else is handled by the provided Docker container.
 
@@ -349,11 +428,11 @@ AWS_BUCKET_CACHE=your-cache-bucket
 SMART_CROP_ENGINE=rekognition
 ```
 
-The Docker container will automatically load these variables if referenced in `docker-compose.yml`.
+The Docker container loads these variables automatically if they are referenced in `docker-compose.yml`.
 
 Supported `SMART_CROP_ENGINE` values:
 
-- `rekognition`: Amazon Rekognition label detection, with face refinement on human-subject images, plus Sharp attention fallback
+- `rekognition`: Rekognition `DetectLabels` subject detection, optional `DetectFaces` refinement for human subjects, plus Sharp attention fallback
 - `attention`: Sharp's built-in attention strategy only
 
 > **Note:** `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are read automatically by the AWS SDK from environment variables — they don't need to be passed explicitly in code. On Lambda, the SDK uses the IAM execution role instead.
