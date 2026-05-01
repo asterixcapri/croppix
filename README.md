@@ -6,7 +6,9 @@
 
 **Croppix** is an open-source image processing service based on [Sharp](https://sharp.pixelplumbing.com/) and [Amazon Rekognition](https://aws.amazon.com/rekognition/), allowing dynamic generation of cropped and optimized images directly from URL parameters, with intelligent caching support on AWS S3.
 
-The smart crop feature uses Amazon Rekognition to detect the main subject in an image, ensuring the most important content is always visible in the cropped result.
+The smart crop feature can use Amazon Rekognition to detect the main subject in an image, ensuring the most important content is always visible in the cropped result.
+
+The `csmart` crop mode can be switched between two engines with the `SMART_CROP_ENGINE` environment variable: `rekognition` or `attention`.
 
 Croppix is designed to be integrated into high-performance websites, serving optimized images directly from a CDN (like CloudFront), with automatic fallback to a processing server when cache is missed.
 
@@ -259,7 +261,9 @@ Parameters can be combined with `_` and used in any order.
 
 Croppix supports the following crop modes via the `c{crop}` parameter.
 
-> **Note:** The `smart` crop uses Amazon Rekognition to detect objects in the image. If no subject is detected (e.g., abstract images or landscapes without distinct objects), it automatically falls back to Sharp's `attention` strategy.
+> **Note:** With `SMART_CROP_ENGINE=rekognition`, the `smart` crop uses Amazon Rekognition labels as the base signal. When human subjects are detected, it also uses `DetectFaces` to refine the crop and avoid awkward face cuts. If no subject is detected, it automatically falls back to Sharp's `attention` strategy.
+
+> **Engine selection:** set `SMART_CROP_ENGINE=rekognition` or `SMART_CROP_ENGINE=attention` to choose how `csmart` behaves without changing URLs.
 
 | Value        | Description |
 |---------------|----------------------------------------------------------------------------------|
@@ -328,8 +332,8 @@ cd croppix
 cp .env.dist .env
 docker compose up -d
 docker compose exec node bash
-yarn install
-yarn dev
+npm install
+npm run dev
 ```
 
 ### Environment Variables
@@ -342,9 +346,15 @@ AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=your-region
 AWS_BUCKET=your-source-bucket
 AWS_BUCKET_CACHE=your-cache-bucket
+SMART_CROP_ENGINE=rekognition
 ```
 
 The Docker container will automatically load these variables if referenced in `docker-compose.yml`.
+
+Supported `SMART_CROP_ENGINE` values:
+
+- `rekognition`: Amazon Rekognition label detection, with face refinement on human-subject images, plus Sharp attention fallback
+- `attention`: Sharp's built-in attention strategy only
 
 > **Note:** `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are read automatically by the AWS SDK from environment variables — they don't need to be passed explicitly in code. On Lambda, the SDK uses the IAM execution role instead.
 
@@ -369,14 +379,17 @@ The AWS credentials must have the following permissions:
     },
     {
       "Effect": "Allow",
-      "Action": "rekognition:DetectLabels",
+      "Action": [
+        "rekognition:DetectLabels",
+        "rekognition:DetectFaces"
+      ],
       "Resource": "*"
     }
   ]
 }
 ```
 
-The `rekognition:DetectLabels` permission is required for the smart crop feature.
+The `rekognition:DetectLabels` permission is required when `SMART_CROP_ENGINE=rekognition`. `rekognition:DetectFaces` is additionally required for human-subject refinement.
 
 ## 💬 Support & Contributions
 

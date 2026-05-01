@@ -13,8 +13,8 @@
     "sharp": "^0.34.5"
   },
   "scripts": {
+    "compare": "node scripts/compare.js",
     "dev": "node --watch src/app.js",
     "start": "node src/app.js"
-  },
-  "packageManager": "yarn@4.12.0"
+  }
 }

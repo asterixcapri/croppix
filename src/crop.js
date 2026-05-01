@@ -2,30 +2,32 @@ import sharp from 'sharp';
 import { detectSubject } from './detect.js';
 
 export const applyCropSmart = async (imageBuffer, params, metadata) => {
-  // Try to detect main subject using Amazon Rekognition
-  const subjectBox = await detectSubject(imageBuffer, metadata);
+  const engine = getSmartCropEngine();
 
-  if (subjectBox) {
-    const cropRect = calculateCropRect(subjectBox, metadata, params);
-
-    return sharp(imageBuffer).extract({
-      left: cropRect.x,
-      top: cropRect.y,
-      width: cropRect.width,
-      height: cropRect.height
-    })
-    .resize({
-      width: params.width,
-      height: params.height
-    });
-  } else {
-    // Fallback to sharp's attention strategy
-    return sharp(imageBuffer).resize({
-      width: params.width,
-      height: params.height,
-      position: sharp.strategy.attention
-    });
+  if (engine === 'attention') {
+    return applyAttentionCrop(imageBuffer, params);
   }
+
+  const detection = await detectSubject(imageBuffer, metadata, params);
+
+  const subjectBox = detection?.box;
+
+  if (!subjectBox) {
+    return applyAttentionCrop(imageBuffer, params);
+  }
+
+  const cropRect = calculateCropRect(subjectBox, metadata, params);
+
+  return sharp(imageBuffer).extract({
+    left: cropRect.x,
+    top: cropRect.y,
+    width: cropRect.width,
+    height: cropRect.height
+  })
+  .resize({
+    width: params.width,
+    height: params.height
+  });
 };
 
 export const applyCropNone = async (imageBuffer, params, metadata) => {
@@ -60,6 +62,24 @@ const getPosition = (pos) => {
   } else {
     return pos.split(/(?=[A-Z])/).join(' ').toLowerCase();
   }
+};
+
+const applyAttentionCrop = (imageBuffer, params) => {
+  return sharp(imageBuffer).resize({
+    width: params.width,
+    height: params.height,
+    position: sharp.strategy.attention
+  });
+};
+
+const getSmartCropEngine = () => {
+  const engine = process.env.SMART_CROP_ENGINE?.toLowerCase();
+
+  if (engine === 'attention' || engine === 'rekognition') {
+    return engine;
+  }
+
+  return 'rekognition';
 };
 
 // Calculate the best crop rectangle that includes the subject and matches target aspect ratio
